@@ -1,0 +1,748 @@
+id: "island_of_whispers"
+name: "低语之岛"
+setting: "一座被浓雾笼罩的热带岛屿，传说中隐藏着远古文明的遗迹和致命的秘密。六名幸存者被冲上不同的海岸，他们必须在岛屿的神秘力量吞噬一切之前找到出路——或者成为最后的幸存者。"
+intro_text: |
+  你从昏迷中醒来，咸涩的海水还残留在嘴角。
+  四周是茂密的热带丛林，远处传来不明生物的低吼。
+  你的记忆模糊——只记得一场风暴，和一座不该存在的岛屿。
+  收音机里反复播放着一段失真的录音：
+  "……不要相信任何人……在第30次日落之前……只有一个人能……"
+  信号断了。你握紧拳头，站了起来。
+
+player_range: [2, 4]
+round_time_seconds: 45
+max_rounds: 30
+
+# ── Locations ──────────────────────────────────────────────────
+locations:
+  beach_camp:
+    id: "beach_camp"
+    name: "海滩营地"
+    description: "一片被冲上来的残骸散落的海滩。椰子树在头顶摇曳，远处能看到岛屿中心的火山。"
+    tags: ["outdoor", "water_source", "safe"]
+    connections:
+      north: "jungle_edge"
+      east: "rocky_shore"
+    searchable_items:
+      - item_id: "cloth_scrap"
+        weight: 3.0
+        max_count: 3
+      - item_id: "plastic_bottle"
+        weight: 2.0
+        max_count: 2
+      - item_id: "rope"
+        weight: 1.0
+        max_count: 1
+    danger_level: 1
+
+  jungle_edge:
+    id: "jungle_edge"
+    name: "丛林边缘"
+    description: "茂密的热带丛林入口。巨大的蕨类植物遮天蔽日，空气中弥漫着潮湿的泥土味。"
+    tags: ["outdoor", "dense_vegetation"]
+    connections:
+      south: "beach_camp"
+      north: "ancient_ruins"
+      east: "river_crossing"
+      west: "dark_cave"
+    searchable_items:
+      - item_id: "herb"
+        weight: 3.0
+        max_count: 4
+      - item_id: "sharp_stone"
+        weight: 2.0
+        max_count: 2
+      - item_id: "vine"
+        weight: 2.0
+        max_count: 3
+    danger_level: 2
+
+  rocky_shore:
+    id: "rocky_shore"
+    name: "礁石海岸"
+    description: "嶙峋的黑色礁石延伸入海。潮汐池里偶尔能看到被困的鱼，但礁石间的裂缝深不见底。"
+    tags: ["outdoor", "water_source", "dangerous"]
+    connections:
+      west: "beach_camp"
+      north: "cliff_path"
+    searchable_items:
+      - item_id: "rusty_knife"
+        weight: 1.0
+        max_count: 1
+      - item_id: "fish"
+        weight: 3.0
+        max_count: 3
+      - item_id: "salt_crystal"
+        weight: 2.0
+        max_count: 2
+    danger_level: 3
+
+  dark_cave:
+    id: "dark_cave"
+    name: "幽暗洞穴"
+    description: "丛林深处的一个洞穴入口。洞壁上刻着看不懂的符号，深处传来微弱的光芒。"
+    tags: ["indoor", "dangerous", "mysterious"]
+    connections:
+      east: "jungle_edge"
+      deep: "cave_heart"
+    searchable_items:
+      - item_id: "glowing_moss"
+        weight: 2.0
+        max_count: 2
+      - item_id: "ancient_token"
+        weight: 0.5
+        max_count: 1
+    danger_level: 4
+
+  cave_heart:
+    id: "cave_heart"
+    name: "洞穴之心"
+    description: "洞穴最深处，一个巨大的地下空间。中央矗立着一座石制祭坛，上面放着一个散发微光的器物。"
+    tags: ["indoor", "mysterious", "ritual_site"]
+    connections:
+      out: "dark_cave"
+    searchable_items:
+      - item_id: "ritual_artifact"
+        weight: 1.0
+        max_count: 1
+    danger_level: 5
+
+  river_crossing:
+    id: "river_crossing"
+    name: "河流渡口"
+    description: "一条湍急的河流穿过丛林。对岸隐约可见一条小路通向高地。水面下似乎有什么在游动。"
+    tags: ["outdoor", "water_source"]
+    connections:
+      west: "jungle_edge"
+      east: "highland"
+      north: "waterfall"
+    searchable_items:
+      - item_id: "bamboo"
+        weight: 3.0
+        max_count: 4
+      - item_id: "medicinal_fish"
+        weight: 1.5
+        max_count: 2
+    danger_level: 3
+
+  ancient_ruins:
+    id: "ancient_ruins"
+    name: "远古遗迹"
+    description: "被藤蔓覆盖的石制建筑群。墙壁上的浮雕描绘着某种仪式，中央广场有一座坍塌的塔楼。"
+    tags: ["outdoor", "mysterious", "ruins"]
+    connections:
+      south: "jungle_edge"
+      up: "tower_top"
+      east: "sacred_grove"
+    searchable_items:
+      - item_id: "stone_tablet"
+        weight: 1.0
+        max_count: 2
+      - item_id: "ancient_weapon"
+        weight: 0.5
+        max_count: 1
+      - item_id: "cloth_scrap"
+        weight: 2.0
+        max_count: 2
+    danger_level: 4
+
+  tower_top:
+    id: "tower_top"
+    name: "塔楼顶端"
+    description: "遗迹塔楼的顶部，可以俯瞰整座岛屿。这里似乎是一个信号点——如果能找到发射器的话。"
+    tags: ["outdoor", "high_ground", "signal_point"]
+    connections:
+      down: "ancient_ruins"
+    searchable_items:
+      - item_id: "broken_transmitter"
+        weight: 1.0
+        max_count: 1
+      - item_id: "battery"
+        weight: 0.5
+        max_count: 1
+    danger_level: 3
+
+  sacred_grove:
+    id: "sacred_grove"
+    name: "神圣树丛"
+    description: "一片被巨大古树环绕的空地。空气中弥漫着花香，地面上长满了罕见的药用植物。"
+    tags: ["outdoor", "water_source", "safe", "herb_rich"]
+    connections:
+      west: "ancient_ruins"
+      north: "volcano_path"
+    searchable_items:
+      - item_id: "rare_herb"
+        weight: 3.0
+        max_count: 5
+      - item_id: "poison_dart"
+        weight: 1.0
+        max_count: 2
+      - item_id: "herb"
+        weight: 2.0
+        max_count: 3
+    danger_level: 2
+
+  waterfall:
+    id: "waterfall"
+    name: "瀑布后方"
+    description: "瀑布的水帘后面隐藏着一个小型空间。有人在这里留下了物资。"
+    tags: ["indoor", "water_source", "hidden"]
+    connections:
+      south: "river_crossing"
+    searchable_items:
+      - item_id: "waterproof_bag"
+        weight: 1.0
+        max_count: 1
+      - item_id: "medkit"
+        weight: 1.0
+        max_count: 1
+    danger_level: 2
+
+  highland:
+    id: "highland"
+    name: "高地瞭望"
+    description: "岛屿的高地，可以清晰看到火山口冒出的烟雾。一条小路蜿蜒向下通往火山方向。"
+    tags: ["outdoor", "high_ground"]
+    connections:
+      west: "river_crossing"
+      south: "volcano_path"
+      north: "cliff_path"
+    searchable_items:
+      - item_id: "binoculars"
+        weight: 0.5
+        max_count: 1
+      - item_id: "sharp_stone"
+        weight: 2.0
+        max_count: 2
+    danger_level: 2
+
+  cliff_path:
+    id: "cliff_path"
+    name: "悬崖小径"
+    description: "沿着悬崖边缘的狭窄小径。一侧是万丈深渊，另一侧是陡峭的岩壁。风很大。"
+    tags: ["outdoor", "dangerous"]
+    connections:
+      south: "highland"
+      west: "rocky_shore"
+    searchable_items:
+      - item_id: "rope"
+        weight: 1.5
+        max_count: 1
+      - item_id: "eagle_feather"
+        weight: 0.5
+        max_count: 1
+    danger_level: 4
+
+  volcano_path:
+    id: "volcano_path"
+    name: "火山之路"
+    description: "通往火山口的灼热小路。地面温热，空气中弥漫着硫磺味。远处传来低沉的轰鸣。"
+    tags: ["outdoor", "dangerous", "hot"]
+    connections:
+      north: "highland"
+      south: "sacred_grove"
+      up: "volcano_crater"
+    searchable_items:
+      - item_id: "sulfur_stone"
+        weight: 2.0
+        max_count: 3
+      - item_id: "obsidian_blade"
+        weight: 0.5
+        max_count: 1
+    danger_level: 5
+
+  volcano_crater:
+    id: "volcano_crater"
+    name: "火山口"
+    description: "火山口的边缘。熔岩在下方翻涌，热浪令人窒息。这里似乎是岛屿一切异象的源头。"
+    tags: ["outdoor", "dangerous", "extreme", "ritual_site"]
+    connections:
+      down: "volcano_path"
+    searchable_items:
+      - item_id: "volcanic_core"
+        weight: 0.3
+        max_count: 1
+    danger_level: 7
+
+# ── Items ──────────────────────────────────────────────────────
+items:
+  cloth_scrap:
+    id: "cloth_scrap"
+    name: "布料碎片"
+    kind: "material"
+    description: "从衣物或帆布上撕下的碎片，可以用来制作绷带或其他物品。"
+
+  plastic_bottle:
+    id: "plastic_bottle"
+    name: "塑料瓶"
+    kind: "material"
+    description: "一个空的塑料瓶，可以装水。"
+
+  rope:
+    id: "rope"
+    name: "绳索"
+    kind: "material"
+    description: "一卷结实的绳索，攀爬和制作都需要它。"
+
+  herb:
+    id: "herb"
+    name: "草药"
+    kind: "consumable"
+    stats: {heal: 15}
+    description: "常见的草药，咀嚼后可以轻微恢复体力。"
+
+  rare_herb:
+    id: "rare_herb"
+    name: "稀有药草"
+    kind: "consumable"
+    stats: {heal: 35}
+    description: "罕见的药草，具有强效的治疗效果。"
+
+  sharp_stone:
+    id: "sharp_stone"
+    name: "锋利石头"
+    kind: "weapon"
+    stats: {attack: 8}
+    description: "边缘锋利的石头，简陋但有效。"
+
+  rusty_knife:
+    id: "rusty_knife"
+    name: "生锈小刀"
+    kind: "weapon"
+    stats: {attack: 12}
+    description: "从礁石中捡到的旧刀，虽然生锈但仍然锋利。"
+
+  ancient_weapon:
+    id: "ancient_weapon"
+    name: "远古石刃"
+    kind: "weapon"
+    stats: {attack: 20}
+    description: "从遗迹中发现的石制武器，上面刻有神秘符文，异常锋利。"
+
+  obsidian_blade:
+    id: "obsidian_blade"
+    name: "黑曜石刃"
+    kind: "weapon"
+    stats: {attack: 25}
+    description: "用火山玻璃打造的刀刃，锋利得可以切割影子。"
+
+  vine:
+    id: "vine"
+    name: "藤蔓"
+    kind: "material"
+    description: "强韧的丛林藤蔓，可以替代绳索使用。"
+
+  bamboo:
+    id: "bamboo"
+    name: "竹子"
+    kind: "material"
+    description: "坚固的竹子，可以制作工具或武器柄。"
+
+  fish:
+    id: "fish"
+    name: "生鱼"
+    kind: "consumable"
+    stats: {heal: 10, stamina: 15}
+    description: "从潮汐池抓到的鱼，可以食用恢复体力。"
+
+  medicinal_fish:
+    id: "medicinal_fish"
+    name: "药用鱼"
+    kind: "consumable"
+    stats: {heal: 25}
+    description: "这种鱼据说有特殊的药用价值。"
+
+  salt_crystal:
+    id: "salt_crystal"
+    name: "盐晶"
+    kind: "material"
+    description: "海水结晶形成的盐块，可以用于保存食物或消毒。"
+
+  glowing_moss:
+    id: "glowing_moss"
+    name: "发光苔藓"
+    kind: "material"
+    description: "洞穴中生长的发光苔藓，可以照亮黑暗区域。"
+
+  ancient_token:
+    id: "ancient_token"
+    name: "远古令牌"
+    kind: "key"
+    description: "一块刻有符文的石牌，似乎是打开某个地方的钥匙。"
+
+  ritual_artifact:
+    id: "ritual_artifact"
+    name: "仪式器物"
+    kind: "key"
+    description: "洞穴祭坛上的神秘器物，散发着微弱的能量。据说可以控制岛屿的力量。"
+
+  stone_tablet:
+    id: "stone_tablet"
+    name: "石板铭文"
+    kind: "key"
+    description: "刻有远古文字的石板，记载着岛屿的秘密。"
+
+  broken_transmitter:
+    id: "broken_transmitter"
+    name: "损坏的发射器"
+    kind: "key"
+    description: "一个无线电发射器，如果能找到电池的话也许能发出求救信号。"
+
+  battery:
+    id: "battery"
+    name: "电池"
+    kind: "key"
+    description: "一块还能使用的电池。"
+
+  waterproof_bag:
+    id: "waterproof_bag"
+    name: "防水袋"
+    kind: "material"
+    description: "一个密封的防水袋，里面还有一些空间。"
+
+  medkit:
+    id: "medkit"
+    name: "医疗包"
+    kind: "consumable"
+    stats: {heal: 50}
+    description: "一个完整的医疗急救包，可以大幅恢复生命值。"
+
+  binoculars:
+    id: "binoculars"
+    name: "双筒望远镜"
+    kind: "material"
+    description: "可以远距离观察岛屿其他区域的望远镜。"
+
+  poison_dart:
+    id: "poison_dart"
+    name: "毒镖"
+    kind: "weapon"
+    stats: {attack: 15, poison: 5}
+    description: "涂有植物毒素的飞镖，伤害不高但能让目标持续中毒。"
+
+  eagle_feather:
+    id: "eagle_feather"
+    name: "鹰羽"
+    kind: "material"
+    description: "一支巨大的鹰羽，传说中是岛屿守护者的象征。"
+
+  sulfur_stone:
+    id: "sulfur_stone"
+    name: "硫磺石"
+    kind: "material"
+    description: "含有硫磺的石头，可以引火或制作特殊物品。"
+
+  volcanic_core:
+    id: "volcanic_core"
+    name: "火山之心"
+    kind: "key"
+    description: "从火山口获取的核心矿物，蕴含着岛屿最原始的力量。"
+
+  bandage:
+    id: "bandage"
+    name: "绷带"
+    kind: "consumable"
+    stats: {heal: 25}
+    description: "用布料制作的简易绷带，可以恢复生命值。"
+
+  stone_spear:
+    id: "stone_spear"
+    name: "石矛"
+    kind: "weapon"
+    stats: {attack: 16}
+    description: "用石头和竹子制作的长矛，比石头更有效的武器。"
+
+  torch:
+    id: "torch"
+    name: "火把"
+    kind: "material"
+    description: "可以照亮黑暗区域的火把。"
+
+  signal_fire:
+    id: "signal_fire"
+    name: "信号火堆"
+    kind: "key"
+    description: "用硫磺和布料制作的可燃信号堆，在高处可以点燃发出求救信号。"
+
+  antidote:
+    id: "antidote"
+    name: "解毒剂"
+    kind: "consumable"
+    stats: {heal: 10, cure_poison: true}
+    description: "用稀有药草制作的解毒剂，可以解除中毒状态。"
+
+  escape_raft:
+    id: "escape_raft"
+    name: "逃生筏"
+    kind: "key"
+    description: "用竹子和绳索制作的简易筏，可以在水边逃离这座岛屿。"
+
+# ── Recipes ────────────────────────────────────────────────────
+recipes:
+  - output_item_id: "bandage"
+    inputs: {cloth_scrap: 2}
+
+  - output_item_id: "stone_spear"
+    inputs: {sharp_stone: 1, bamboo: 1, vine: 1}
+
+  - output_item_id: "torch"
+    inputs: {bamboo: 1, cloth_scrap: 1, sulfur_stone: 1}
+    requires_location_tag: null
+
+  - output_item_id: "signal_fire"
+    inputs: {rope: 1, sulfur_stone: 2, cloth_scrap: 1}
+    requires_location_tag: "high_ground"
+
+  - output_item_id: "antidote"
+    inputs: {rare_herb: 2, plastic_bottle: 1}
+
+  - output_item_id: "escape_raft"
+    inputs: {bamboo: 3, rope: 2, cloth_scrap: 2}
+    requires_location_tag: "water_source"
+
+# ── Knowledge Sources ──────────────────────────────────────────
+# acquisition: search = 搜索该地点时按 weight 概率习得
+#              arrive = 首次到达该地点时习得
+#              craft  = 合成出指定物品时习得
+#              event  = 由事件或角色技能授予
+# grants_knowledge 中的 flag 可供胜利条件 required_knowledge 引用；
+# stat_bonus 提供永久属性成长（如赛博朋克剧本中的脑机接口植入）。
+knowledge_sources:
+  - id: "insect_alpha"
+    name: "阿尔法虫群习性"
+    description: "你观察到了阿尔法虫群的觅食模式，掌握了它们的行动规律。"
+    acquisition: "search"
+    location_id: "jungle_edge"
+    weight: 0.6
+    grants_knowledge: ["insect_alpha"]
+
+  - id: "insect_beta"
+    name: "贝塔虫群迁徙"
+    description: "洞穴中的贝塔虫群揭示了岛屿生态的迁徙秘密，你的预判能力提升了。"
+    acquisition: "search"
+    location_id: "dark_cave"
+    weight: 0.6
+    grants_knowledge: ["insect_beta"]
+    stat_bonus: {attack: 2}
+
+  - id: "insect_gamma"
+    name: "伽马虫群毒素"
+    description: "圣林中的伽马虫群教会了你解读昆虫毒素与信息素。"
+    acquisition: "search"
+    location_id: "sacred_grove"
+    weight: 0.6
+    grants_knowledge: ["insect_gamma"]
+
+  - id: "first_aid"
+    name: "野外急救术"
+    description: "亲手制作绷带让你掌握了基础的野外急救技巧。"
+    acquisition: "craft"
+    item_id: "bandage"
+    grants_knowledge: ["first_aid"]
+
+  - id: "ruins_inscription"
+    name: "遗迹铭文解读"
+    description: "你能读懂远古文明留下的铭文，它们似乎能增强你的防御直觉。"
+    acquisition: "arrive"
+    location_id: "ancient_ruins"
+    grants_knowledge: ["ruins_inscription"]
+    stat_bonus: {defense: 2}
+
+# ── Characters ─────────────────────────────────────────────────
+characters:
+  - id: "ex_soldier"
+    name: "雷·卡特"
+    backstory: |
+      前海豹突击队员，在一次秘密任务中遭遇风暴被冲上这座岛屿。
+      你的身体是你最强的武器——多年训练赋予了你超凡的战斗本能。
+      但你也知道，在这座岛上，蛮力未必是最终的答案。
+    narration_style: "冷静警觉的军人视角：多用战斗直觉、威胁评估、身体记忆等措辞，短促有力。"
+    base_stats:
+      hp: 120
+      max_hp: 120
+      stamina: 100
+      max_stamina: 100
+      attack: 18
+      defense: 12
+      speed: 8
+    start_location: "beach_camp"
+    start_inventory: {rusty_knife: 1}
+    secret_objective: "你是唯一知道这座岛屿军事秘密的人。消灭所有其他幸存者，确保秘密不会外泄。"
+    victory_condition:
+      kind: "eliminate_all"
+      params: {}
+    abilities:
+      - id: "quick_strike"
+        name: "迅捷突刺"
+        description: "消耗体力发动一次迅猛的突刺，造成 12 点伤害。"
+        stamina_cost: 15
+        cooldown_rounds: 3
+        target: "single"
+        effects:
+          - {type: damage, target: single, amount: 12}
+
+  - id: "entomologist"
+    name: "林·薇拉"
+    backstory: |
+      昆虫学家，为了追寻一种据说只在这座岛屿上存在的远古昆虫而来。
+      你的战斗力不强，但你对岛上生态系统的理解是无人能及的。
+      如果你能研究并控制那些神秘昆虫，也许能逆转整个局势。
+    narration_style: "细致的科学家视角：多用昆虫、生态、信息素、捕食者与猎物等观察性措辞，理性分析。"
+    base_stats:
+      hp: 80
+      max_hp: 80
+      stamina: 120
+      max_stamina: 120
+      attack: 6
+      defense: 6
+      speed: 10
+    start_location: "jungle_edge"
+    start_inventory: {herb: 2}
+    secret_objective: "研究岛上的三种特殊昆虫（通过搜索特定地点获取知识），学会控制它们的方法，用昆虫的力量消灭或威慑所有其他幸存者。"
+    victory_condition:
+      kind: "custom_flag"
+      params: {required_knowledge: ["insect_alpha", "insect_beta", "insect_gamma"]}
+    abilities:
+      - id: "summon_swarm"
+        name: "虫群召来"
+        description: "以你的昆虫知识驱使虫群袭击同区域的一名对手，使其所在区域遭受虫群袭击。"
+        stamina_cost: 20
+        cooldown_rounds: 5
+        target: "single"
+        effects:
+          - {type: trigger_event, event_id: swarm_summoned}
+
+  - id: "archaeologist"
+    name: "陈·哈维"
+    backstory: |
+      考古学家，对这座岛屿上的远古文明着迷已久。
+      你相信遗迹中隐藏着离开这里的关键——那座塔楼也许能发送求救信号。
+      收集石板铭文和关键零件，在所有人之前发出求救信号。
+    narration_style: "考据的考古学家视角：多用遗迹、铭文、古老线索、文明谜题等措辞，求知欲强。"
+    base_stats:
+      hp: 90
+      max_hp: 90
+      stamina: 110
+      max_stamina: 110
+      attack: 8
+      defense: 8
+      speed: 9
+    start_location: "ancient_ruins"
+    start_inventory: {}
+    secret_objective: "收集2块石板铭文(stone_tablet)、1个损坏的发射器(broken_transmitter)和1个电池(battery)，到达塔楼顶端(tower_top)发出求救信号。"
+    victory_condition:
+      kind: "collect_items"
+      params: {item_ids: ["stone_tablet", "broken_transmitter", "battery"], at_location: "tower_top"}
+    abilities:
+      - id: "decipher"
+        name: "铭文解读"
+        description: "解读遗迹铭文，永久提升 2 点防御。"
+        stamina_cost: 12
+        cooldown_rounds: 4
+        target: "self"
+        effects:
+          - {type: grant_knowledge, source: ruins_inscription, target: self}
+
+  - id: "mysterious_stranger"
+    name: "???"
+    backstory: |
+      你不记得自己是谁。醒来时已经在岛屿的洞穴深处。
+      那些发光的苔藓似乎在对你低语，祭坛上的器物呼唤着你。
+      也许答案在火山口——那里是一切的源头。
+    narration_style: "恍惚的神秘视角：多用低语、梦境、超自然、被牵引等措辞，朦胧而宿命。"
+    base_stats:
+      hp: 100
+      max_hp: 100
+      stamina: 100
+      max_stamina: 100
+      attack: 12
+      defense: 8
+      speed: 12
+    start_location: "dark_cave"
+    start_inventory: {glowing_moss: 1}
+    secret_objective: "获取仪式器物(ritual_artifact)和火山之心(volcanic_core)，到达火山口完成远古仪式，唤醒岛屿的力量。"
+    victory_condition:
+      kind: "custom_flag"
+      params: {required_items: ["ritual_artifact", "volcanic_core"], at_location: "volcano_crater"}
+    abilities:
+      - id: "shadow_strike"
+        name: "暗影打击"
+        description: "以岛屿的低语为媒介发动袭击，造成 18 点伤害并使目标中毒。"
+        stamina_cost: 25
+        cooldown_rounds: 4
+        target: "single"
+        effects:
+          - {type: damage, target: single, amount: 18}
+          - {type: status, target: single, status: poison, rounds: 2, magnitude: 3}
+
+# ── Random Events ──────────────────────────────────────────────
+# 每回合结束时按权重从"已到触发回合且未达触发上限"的事件中抽一个触发。
+# 技能可通过 trigger_event 效果强制触发指定事件（无视 round_trigger，
+# 但仍受 max_fires 限制）。round_trigger: null 表示只能由技能触发。
+random_events:
+  - id: "tropical_storm"
+    name: "热带风暴"
+    description: "一场突如其来的暴风雨席卷了岛屿。"
+    round_trigger: 6
+    weight: 1.0
+    repeatable: true
+    max_fires: 3
+    effects:
+      - {type: damage, target: at_location, location_id: beach_camp, amount: 6}
+      - {type: damage, target: at_location, location_id: rocky_shore, amount: 6}
+      - {type: stamina, target: all, amount: -10}
+    narrative_seed: "暴风雨突然降临，狂风暴雨让所有人都难以行动。"
+
+  - id: "insect_swarm"
+    name: "虫群来袭"
+    description: "一大群不明昆虫从丛林深处涌出。"
+    round_trigger: 10
+    weight: 1.0
+    repeatable: true
+    max_fires: 2
+    effects:
+      - {type: damage, target: at_location, location_id: jungle_edge, amount: 8}
+      - {type: status, target: at_location, location_id: jungle_edge, status: poison, rounds: 3, magnitude: 3}
+    narrative_seed: "数以千计的昆虫从丛林深处涌出，它们似乎被某种力量驱使。"
+
+  - id: "swarm_summoned"
+    name: "召来的虫群"
+    description: "被昆虫学家驱使的虫群向指定区域发动袭击。"
+    round_trigger: null
+    max_fires: 5
+    effects:
+      - {type: damage, target: others_at_location, amount: 8}
+      - {type: status, target: others_at_location, status: poison, rounds: 3, magnitude: 3}
+    narrative_seed: "一群昆虫在神秘力量的驱使下扑向了那片区域！"
+
+  - id: "volcanic_tremor"
+    name: "火山震动"
+    description: "岛屿的火山开始活跃，地面震动。"
+    round_trigger: 15
+    weight: 1.0
+    effects:
+      - {type: damage, target: at_location, location_id: volcano_path, amount: 10}
+      - {type: damage, target: at_location, location_id: volcano_crater, amount: 10}
+      - {type: set_global_flag, flag: volcano_awakened}
+    narrative_seed: "脚下的地面开始剧烈震动，火山口冒出更浓的烟雾。岛屿似乎在苏醒。"
+
+  - id: "ancient_mechanism"
+    name: "远古机关"
+    description: "遗迹中的某个远古机关被意外触发。"
+    round_trigger: 8
+    weight: 0.5
+    effects:
+      - {type: grant_knowledge, source: ruins_inscription, target: at_location, location_id: ancient_ruins}
+    narrative_seed: "你听到远处传来石头转动的声音——遗迹中的某个远古机关被触发了。"
+
+  - id: "mysterious_healing"
+    name: "神秘治愈"
+    description: "岛屿的神秘力量治愈了附近的伤者。"
+    round_trigger: 8
+    weight: 0.4
+    repeatable: true
+    max_fires: 3
+    effects:
+      - {type: heal, target: at_location, location_id: cave_heart, amount: 20}
+      - {type: heal, target: at_location, location_id: sacred_grove, amount: 20}
+    narrative_seed: "一阵温暖的光芒从地底升起，你感到伤痛在慢慢消退。这座岛屿还有温柔的一面。"

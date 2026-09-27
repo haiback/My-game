@@ -1,0 +1,21 @@
+server:
+  host: "127.0.0.1"
+  port: 8765
+
+ollama:
+  base_url: "http://localhost:11434"
+  parser_model: "qwen2.5:3b"
+  narrator_model: "qwen2.5:7b"
+  parser_temperature: 0.1
+  narrator_temperature: 0.8
+  timeout_seconds: 30
+  max_retries: 1
+  circuit_breaker_threshold: 3
+  probe_interval_seconds: 60
+
+game:
+  round_time_seconds: 45
+  narrative_ack_timeout_seconds: 60
+  max_rounds: 30
+  tick_interval_seconds: 5
+  tick_fast_threshold_seconds: 10
