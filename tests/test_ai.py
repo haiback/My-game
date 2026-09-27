@@ -57,6 +57,10 @@ class FailingNarrator:
         self.calls += 1
         raise RuntimeError("boom")
 
+    async def narrate_world(self, *args, **kwargs):
+        self.calls += 1
+        raise RuntimeError("boom")
+
 
 # ---------------------------------------------------------------------------
 # Mini scenario / view builder
@@ -369,6 +373,53 @@ class TestNarrator:
         with pytest.raises(ValueError):
             await narrator.narrate(actor, 1, events, scenario)
 
+    async def test_prompt_includes_world_summary_and_others(self):
+        narrator = self._narrator("ok")
+        scenario = make_scenario()
+        players = [PlayerAssignment(player_id="p1", player_name="P1", character_id="c1")]
+        state = init_game(scenario, players)
+        actor = state.actors["p1"]
+
+        from mygame.shared.models import GameEvent
+        events = [GameEvent(round=3, kind="move", actor_ids=["p2"], narrative_seed="P2 moved.")]
+        await narrator.narrate(
+            actor, 3, events, scenario,
+            world_summary="有人穿过迷雾。",
+            others_summary="P2(Doctor) 与你同处一地, 存活",
+            upcoming_threat="黑雾蔓延——雾气逼近中环。",
+            history=["上一回合你在废墟中搜寻。"],
+        )
+        prompt = narrator.client.prompts[0]
+        assert "有人穿过迷雾" in prompt
+        assert "P2(Doctor) 与你同处一地" in prompt
+        assert "黑雾蔓延" in prompt
+        assert "上一回合你在废墟中搜寻" in prompt
+
+    async def test_prompt_includes_identity_focus(self):
+        scenario = make_scenario()
+        scenario.characters[0].focus = "你更在意威胁与战术。"
+        narrator = self._narrator("ok")
+        players = [PlayerAssignment(player_id="p1", player_name="P1", character_id="c1")]
+        state = init_game(scenario, players)
+        actor = state.actors["p1"]
+
+        from mygame.shared.models import GameEvent
+        events = [GameEvent(round=1, kind="wait", actor_ids=["p1"], narrative_seed="P1 waited.")]
+        await narrator.narrate(actor, 1, events, scenario)
+        assert "你更在意威胁与战术" in narrator.client.prompts[0]
+
+    async def test_narrate_world_empty_events_returns_empty(self):
+        narrator = self._narrator("不应被调用")
+        assert await narrator.narrate_world(1, []) == ""
+
+    async def test_narrate_world_builds_public_prompt(self):
+        narrator = self._narrator("黑雾越过城郊。")
+        from mygame.shared.models import GameEvent
+        events = [GameEvent(round=4, kind="random_event", actor_ids=[], narrative_seed="雾墙越过城郊。")]
+        text = await narrator.narrate_world(4, events)
+        assert text == "黑雾越过城郊。"
+        assert "雾墙越过城郊" in narrator.client.prompts[0]
+
 
 # ---------------------------------------------------------------------------
 # AIService (breaker wiring)
@@ -416,3 +467,23 @@ class TestAIService:
         assert await service.narrate_round(actor, 1, events, scenario) is None
         assert await service.narrate_round(actor, 1, events, scenario) is None
         assert failing.calls == 2
+
+    async def test_narrate_world_degrades_to_none(self):
+        service = self._service(threshold=2)
+        failing = FailingNarrator()
+        service.narrator = failing
+
+        from mygame.shared.models import GameEvent
+        events = [GameEvent(round=1, kind="move", actor_ids=["p1"], narrative_seed="P1 moved.")]
+
+        assert await service.narrate_world(1, events) is None
+        assert await service.narrate_world(1, events) is None
+        assert await service.narrate_world(1, events) is None
+        assert failing.calls == 2
+
+    async def test_narrate_world_skips_when_no_public_events(self):
+        service = self._service(threshold=2)
+        failing = FailingNarrator()
+        service.narrator = failing
+        assert await service.narrate_world(1, []) is None
+        assert failing.calls == 0

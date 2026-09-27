@@ -41,6 +41,7 @@ class RoomTask:
         self.loop: GameLoop | None = None
         self._task: asyncio.Task | None = None
         self._connections: dict[str, Any] = {}
+        self._narration_history: dict[str, list[str]] = {}
 
     async def start(self) -> None:
         assignments = [
@@ -133,6 +134,15 @@ class RoomTask:
 
     async def _narrate_with_ai(self, events: list[GameEvent]) -> None:
         assert self.state is not None
+        scenario = self.room.scenario
+        round_num = self.state.round
+
+        # Shared world-side summary of public events, produced once per round.
+        public_events = [ev for ev in events if ev.visibility == "public"]
+        world_summary = await self.ai.narrate_world(round_num, public_events)
+
+        upcoming_threat = self._upcoming_threat(round_num)
+
         tasks: dict[str, asyncio.Task] = {}
         for pid, actor in self.state.actors.items():
             conn = self._connections.get(pid)
@@ -145,7 +155,13 @@ class RoomTask:
             if not per_player:
                 continue
             tasks[pid] = asyncio.create_task(
-                self.ai.narrate_round(actor, self.state.round, per_player, self.room.scenario)
+                self.ai.narrate_round(
+                    actor, round_num, per_player, scenario,
+                    world_summary=world_summary,
+                    others_summary=self._others_summary(pid),
+                    upcoming_threat=upcoming_threat,
+                    history=self._narration_history.get(pid),
+                )
             )
 
         if not tasks:
@@ -157,8 +173,9 @@ class RoomTask:
             if conn is None or conn.closed:
                 continue
             if isinstance(result, str) and result.strip():
+                self._narration_history.setdefault(pid, []).append(result)
                 await conn.send("narrative", {
-                    "round": self.state.round,
+                    "round": round_num,
                     "text": result,
                 })
             else:
@@ -168,9 +185,51 @@ class RoomTask:
                 ]
                 if lines:
                     await conn.send("narrative", {
-                        "round": self.state.round,
+                        "round": round_num,
                         "text": "\n".join(lines),
                     })
+
+    def _others_summary(self, viewer_id: str) -> str | None:
+        """Fog-of-war-respecting summary of other players for one viewer.
+
+        Only reveals players in the *same location* (the one thing the viewer
+        can actually see). Players elsewhere are omitted so narration never
+        leaks a hidden position.
+        """
+        assert self.state is not None
+        scenario = self.room.scenario
+        viewer_loc = self.state.actors[viewer_id].location_id
+        lines: list[str] = []
+        for pid, actor in self.state.actors.items():
+            if pid == viewer_id:
+                continue
+            if actor.location_id != viewer_loc:
+                continue
+            char = next(
+                (c for c in scenario.characters if c.id == actor.character_id), None
+            )
+            name = char.name if char else "?"
+            lines.append(f"{actor.player_name}({name}) 与你同处一地, 存活")
+        return "\n".join(lines) if lines else None
+
+    def _upcoming_threat(self, round_num: int) -> str | None:
+        """Next scheduled random event, framed as a vague premonition (no
+        timeline, so the prose stays a hint rather than a confirmed fact)."""
+        assert self.state is not None
+        scenario = self.room.scenario
+        upcoming = []
+        for ev in scenario.random_events:
+            if ev.round_trigger is None:
+                continue
+            if ev.round_trigger <= round_num:
+                continue
+            if self.state.fired_events.get(ev.id, 0) >= ev.max_fires:
+                continue
+            upcoming.append(ev)
+        if not upcoming:
+            return None
+        nxt = min(upcoming, key=lambda e: e.round_trigger)
+        return f"{nxt.name}——{nxt.description}"
 
     async def _narrate_template(self, events: list[GameEvent]) -> None:
         for ev in events:

@@ -30,6 +30,7 @@ class AIService:
         probe_interval = cfg.get("probe_interval_seconds", 60.0)
         self.parser_breaker = CircuitBreaker(threshold=threshold, probe_interval=probe_interval)
         self.narrator_breaker = CircuitBreaker(threshold=threshold, probe_interval=probe_interval)
+        self.world_breaker = CircuitBreaker(threshold=threshold, probe_interval=probe_interval)
 
         self.parser = IntentParser(
             client=self.client,
@@ -55,16 +56,43 @@ class AIService:
         )
         return result if isinstance(result, ParseResult) else ParseResult()
 
+    async def narrate_world(
+        self,
+        round_num: int,
+        public_events: list[GameEvent],
+    ) -> str | None:
+        """Shared world-side summary of a round's public events. None/"" means
+        the caller should skip the anchor and narrate each player directly."""
+        if not public_events:
+            return None
+        result = await self.world_breaker.call(
+            lambda: self.narrator.narrate_world(round_num, public_events)
+        )
+        if isinstance(result, str) and result.strip():
+            return result
+        return None
+
     async def narrate_round(
         self,
         actor: Actor,
         round_num: int,
         events: list[GameEvent],
         scenario: ScenarioDef,
+        *,
+        world_summary: str | None = None,
+        others_summary: str | None = None,
+        upcoming_threat: str | None = None,
+        history: list[str] | None = None,
     ) -> str | None:
         """Personalized round narration. None means: use template lines."""
         return await self.narrator_breaker.call(
-            lambda: self.narrator.narrate(actor, round_num, events, scenario)
+            lambda: self.narrator.narrate(
+                actor, round_num, events, scenario,
+                world_summary=world_summary,
+                others_summary=others_summary,
+                upcoming_threat=upcoming_threat,
+                history=history,
+            )
         )
 
     async def close(self) -> None:

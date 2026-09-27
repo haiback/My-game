@@ -117,6 +117,7 @@ class CharacterDef(BaseModel):
     name: str
     backstory: str
     narration_style: str = ""
+    focus: str = ""
     base_stats: Stats
     start_location: str
     start_inventory: dict[str, int] = Field(default_factory=dict)
