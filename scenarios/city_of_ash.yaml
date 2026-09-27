@@ -1,0 +1,726 @@
+id: "city_of_ash"
+name: "终焉之城"
+setting: "一座被'黑雾'吞噬的诡异都市。午夜之后，黑雾从城郊荒地涌向市中心，吞没街区、腐蚀血肉。四名'适格者'被困其中，各自背负着不可告人的秘密。黑雾不会停歇——它会在终焉之舞降临前，一寸一寸地吞噬整座城。"
+intro_text: |
+  你睁开眼，鼻腔里灌进一股铁锈与腐烂混合的气味。
+  这不是你熟悉的城市。钟楼在浓雾中若隐若现，街道上散落着被'黑雾'吞没后的痕迹——扭曲的金属、半截的影子。
+  远处，一道灰黑色的雾墙正缓慢地、不可阻挡地朝市中心推进。
+  某个声音在你脑海中低语：'午夜之后，雾会吞噬一切。活到最后的，只有……'
+  声音戛然而止。你攥紧了拳头，这座城市已经不需要规则了。
+
+player_range: [2, 4]
+round_time_seconds: 45
+max_rounds: 26
+
+# ── Locations ──────────────────────────────────────────────────
+# 危险等级(danger_level)表示该区域每回合结束对停留者的腐蚀伤害。
+# 中心安全区危险低，城郊'危险区'危险高——黑雾事件会逐层向内推进，
+# 逼玩家向市中心收缩，从而发生遭遇战。
+locations:
+  city_center:
+    id: "city_center"
+    name: "市中心广场"
+    description: "城市的心脏，被一圈低矮护栏环绕。喷泉已经干涸，但这里尚未被黑雾触及——是整座城市最后的庇护所。"
+    tags: ["outdoor", "safe", "urban"]
+    connections:
+      north: "cathedral"
+      east: "library"
+      south: "metro_station"
+      west: "hospital"
+      up: "clock_tower"
+    searchable_items:
+      - item_id: "cloth_scrap"
+        weight: 3.0
+        max_count: 3
+      - item_id: "canned_food"
+        weight: 2.0
+        max_count: 2
+      - item_id: "water"
+        weight: 2.0
+        max_count: 2
+    danger_level: 0
+
+  clock_tower:
+    id: "clock_tower"
+    name: "钟楼"
+    description: "俯瞰全城的高塔。从这里能看清黑雾推进的边界，也藏着可能发出求救信号的零件。"
+    tags: ["outdoor", "high_ground", "signal_point"]
+    connections:
+      down: "city_center"
+    searchable_items:
+      - item_id: "transmitter_parts"
+        weight: 1.0
+        max_count: 1
+      - item_id: "binoculars"
+        weight: 0.5
+        max_count: 1
+      - item_id: "battery"
+        weight: 1.0
+        max_count: 1
+    danger_level: 1
+
+  cathedral:
+    id: "cathedral"
+    name: "大教堂"
+    description: "尖顶刺破灰雾的古老教堂。彩窗上凝固着某种仪式的图案，长椅间仿佛还残留着低语。"
+    tags: ["indoor", "ritual_site", "mysterious"]
+    connections:
+      south: "city_center"
+      west: "graveyard"
+      east: "antique_shop"
+    searchable_items:
+      - item_id: "black_candle"
+        weight: 2.0
+        max_count: 2
+      - item_id: "ritual_grimoire"
+        weight: 1.0
+        max_count: 1
+      - item_id: "herb"
+        weight: 2.0
+        max_count: 2
+    danger_level: 2
+
+  library:
+    id: "library"
+    name: "旧图书馆"
+    description: "书架倾倒、纸张散落一地的图书馆。关于黑雾的记载或许就藏在这片废墟之中。"
+    tags: ["indoor", "knowledge"]
+    connections:
+      west: "city_center"
+      east: "old_theater"
+      north: "antique_shop"
+    searchable_items:
+      - item_id: "paper_scrap"
+        weight: 3.0
+        max_count: 3
+      - item_id: "antique_fragment"
+        weight: 1.0
+        max_count: 1
+      - item_id: "herb"
+        weight: 2.0
+        max_count: 2
+    danger_level: 2
+
+  hospital:
+    id: "hospital"
+    name: "圣心医院"
+    description: "空无一人的医院，消毒水的气味还没散去。药品柜被翻得七零八落，但运气好的话还能找到补给。"
+    tags: ["indoor", "safe", "medical"]
+    connections:
+      east: "city_center"
+      west: "residential_block"
+    searchable_items:
+      - item_id: "medkit"
+        weight: 1.0
+        max_count: 1
+      - item_id: "bandage"
+        weight: 1.0
+        max_count: 1
+      - item_id: "herb"
+        weight: 3.0
+        max_count: 3
+    danger_level: 1
+
+  metro_station:
+    id: "metro_station"
+    name: "地铁站"
+    description: "地下月台昏暗潮湿，铁轨伸向未知的黑暗。站台的广播偶尔还会发出刺耳的杂音——这里或许有逃离的路。"
+    tags: ["indoor", "escape_point", "urban"]
+    connections:
+      north: "city_center"
+      south: "outskirts"
+      east: "warehouse"
+    searchable_items:
+      - item_id: "rope"
+        weight: 2.0
+        max_count: 2
+      - item_id: "battery"
+        weight: 1.0
+        max_count: 1
+      - item_id: "transmitter_parts"
+        weight: 1.0
+        max_count: 1
+      - item_id: "water"
+        weight: 2.0
+        max_count: 2
+    danger_level: 2
+
+  antique_shop:
+    id: "antique_shop"
+    name: "古董行"
+    description: "摆满真假古玩的铺子，玻璃柜碎了一地。每一件旧物都可能藏着秘密——也可能藏着杀机。"
+    tags: ["indoor", "mysterious"]
+    connections:
+      south: "cathedral"
+      west: "library"
+      east: "abandoned_factory"
+    searchable_items:
+      - item_id: "antique_fragment"
+        weight: 2.0
+        max_count: 2
+      - item_id: "cursed_relic"
+        weight: 1.0
+        max_count: 1
+      - item_id: "paper_scrap"
+        weight: 2.0
+        max_count: 2
+    danger_level: 3
+
+  graveyard:
+    id: "graveyard"
+    name: "郊外墓园"
+    description: "歪斜的墓碑隐没在灰雾里，地面被腐蚀得坑坑洼洼。这里是黑雾最早抵达的地方之一。"
+    tags: ["outdoor", "mysterious", "dangerous"]
+    connections:
+      east: "cathedral"
+      north: "ruins"
+    searchable_items:
+      - item_id: "black_candle"
+        weight: 2.0
+        max_count: 2
+      - item_id: "herb"
+        weight: 2.0
+        max_count: 2
+      - item_id: "rusty_knife"
+        weight: 1.0
+        max_count: 1
+    danger_level: 5
+
+  old_theater:
+    id: "old_theater"
+    name: "破旧剧院"
+    description: "红丝绒幕布已经发黑，舞台中央的吊灯摇摇欲坠。黑暗中似乎有无数双眼睛在盯着你。"
+    tags: ["indoor", "mysterious"]
+    connections:
+      west: "library"
+      north: "warehouse"
+    searchable_items:
+      - item_id: "antique_fragment"
+        weight: 1.0
+        max_count: 1
+      - item_id: "cloth_scrap"
+        weight: 2.0
+        max_count: 2
+      - item_id: "glass_shard"
+        weight: 2.0
+        max_count: 2
+    danger_level: 4
+
+  residential_block:
+    id: "residential_block"
+    name: "居民区"
+    description: "门窗紧闭的居民楼，阳台上还晾着没收回的衣服。人去楼空，只留下生活的残影。"
+    tags: ["outdoor", "urban"]
+    connections:
+      east: "hospital"
+      south: "outskirts"
+      north: "ruins"
+    searchable_items:
+      - item_id: "canned_food"
+        weight: 3.0
+        max_count: 3
+      - item_id: "cloth_scrap"
+        weight: 3.0
+        max_count: 3
+      - item_id: "water"
+        weight: 2.0
+        max_count: 2
+      - item_id: "leather_coat"
+        weight: 1.0
+        max_count: 1
+    danger_level: 3
+
+  warehouse:
+    id: "warehouse"
+    name: "旧仓库"
+    description: "巨大的仓储空间，货架东倒西歪。金属零件散落一地，是制作工具与武器的好去处。"
+    tags: ["indoor", "industrial"]
+    connections:
+      south: "old_theater"
+      west: "metro_station"
+    searchable_items:
+      - item_id: "battery"
+        weight: 1.0
+        max_count: 1
+      - item_id: "transmitter_parts"
+        weight: 1.0
+        max_count: 1
+      - item_id: "metal_scrap"
+        weight: 3.0
+        max_count: 3
+    danger_level: 4
+
+  abandoned_factory:
+    id: "abandoned_factory"
+    name: "废弃工厂"
+    description: "锈迹斑斑的机器和断裂的传送带。空气中漂浮着铁屑，但也能捡到趁手的家伙。"
+    tags: ["indoor", "industrial", "dangerous"]
+    connections:
+      west: "antique_shop"
+      north: "ruins"
+    searchable_items:
+      - item_id: "metal_scrap"
+        weight: 4.0
+        max_count: 4
+      - item_id: "iron_pipe"
+        weight: 2.0
+        max_count: 2
+      - item_id: "rope"
+        weight: 2.0
+        max_count: 2
+    danger_level: 5
+
+  ruins:
+    id: "ruins"
+    name: "古老战场遗迹"
+    description: "黑雾最浓的地方。断壁残垣之间，某种古老仪式曾在这里上演。这里埋藏着终焉的秘密，也埋藏着死亡。"
+    tags: ["outdoor", "ritual_site", "extreme"]
+    connections:
+      south: "graveyard"
+      east: "abandoned_factory"
+      west: "residential_block"
+    searchable_items:
+      - item_id: "cursed_relic"
+        weight: 1.0
+        max_count: 1
+      - item_id: "ritual_dagger"
+        weight: 1.0
+        max_count: 1
+      - item_id: "antique_fragment"
+        weight: 1.0
+        max_count: 1
+    danger_level: 6
+
+  outskirts:
+    id: "outskirts"
+    name: "城郊荒地"
+    description: "城市与荒野的交界，黑雾正是从这里涌入。踏足此地，你能感到雾气啃噬着皮肤。"
+    tags: ["outdoor", "extreme", "dangerous"]
+    connections:
+      north: "metro_station"
+      west: "residential_block"
+    searchable_items:
+      - item_id: "iron_pipe"
+        weight: 1.0
+        max_count: 1
+      - item_id: "metal_scrap"
+        weight: 2.0
+        max_count: 2
+      - item_id: "herb"
+        weight: 1.0
+        max_count: 1
+    danger_level: 6
+
+# ── Items ──────────────────────────────────────────────────────
+items:
+  cloth_scrap:
+    id: "cloth_scrap"
+    name: "布料碎片"
+    kind: "material"
+    description: "从衣物或窗帘上撕下的布料，可以制作绷带。"
+  metal_scrap:
+    id: "metal_scrap"
+    name: "金属碎片"
+    kind: "material"
+    description: "生锈的金属片，打造武器和防具的原料。"
+  rope:
+    id: "rope"
+    name: "绳索"
+    kind: "material"
+    description: "结实的绳索，攀爬与制作都离不开它。"
+  paper_scrap:
+    id: "paper_scrap"
+    name: "纸屑"
+    kind: "material"
+    description: "写满潦草字迹的纸片，似乎与黑雾的真相有关。"
+  black_candle:
+    id: "black_candle"
+    name: "黑蜡烛"
+    kind: "material"
+    description: "散发异味的黑色蜡烛，是某种仪式的必需品。"
+  battery:
+    id: "battery"
+    name: "电池"
+    kind: "material"
+    description: "还有余电的电池，可以驱动设备。"
+  transmitter_parts:
+    id: "transmitter_parts"
+    name: "发射器零件"
+    kind: "material"
+    description: "无线电发射器的散落零件，拼装后或许能发出信号。"
+  antique_fragment:
+    id: "antique_fragment"
+    name: "古董碎片"
+    kind: "material"
+    description: "破碎的古董残片，上面刻着难以辨认的纹路。"
+  herb:
+    id: "herb"
+    name: "草药"
+    kind: "consumable"
+    stats: {heal: 12}
+    description: "从废墟中采到的药草，咀嚼后能略微恢复。"
+  canned_food:
+    id: "canned_food"
+    name: "罐头"
+    kind: "consumable"
+    stats: {heal: 15, stamina: 10}
+    description: "还没过期的罐头，能补充体力和生命。"
+  water:
+    id: "water"
+    name: "瓶装水"
+    kind: "consumable"
+    stats: {stamina: 20}
+    description: "干净的水，恢复体力。"
+  bandage:
+    id: "bandage"
+    name: "绷带"
+    kind: "consumable"
+    stats: {heal: 25}
+    description: "用布料制作的简易绷带，能止血恢复生命。"
+  medkit:
+    id: "medkit"
+    name: "医疗包"
+    kind: "consumable"
+    stats: {heal: 50}
+    description: "完整的急救包，能大幅恢复生命值。"
+  antidote:
+    id: "antidote"
+    name: "解毒剂"
+    kind: "consumable"
+    stats: {heal: 10, cure_poison: true}
+    description: "用草药调制的解毒剂，可解除中毒状态。"
+  glass_shard:
+    id: "glass_shard"
+    name: "玻璃碎片"
+    kind: "weapon"
+    stats: {attack: 6}
+    description: "锋利的碎玻璃，简陋却致命。"
+  rusty_knife:
+    id: "rusty_knife"
+    name: "生锈小刀"
+    kind: "weapon"
+    stats: {attack: 10}
+    description: "从废墟里捡到的旧刀，仍然锋利。"
+  iron_pipe:
+    id: "iron_pipe"
+    name: "铁管"
+    kind: "weapon"
+    stats: {attack: 14}
+    description: "沉甸甸的铁管，挥起来虎虎生风。"
+  ritual_dagger:
+    id: "ritual_dagger"
+    name: "仪式匕首"
+    kind: "weapon"
+    stats: {attack: 18}
+    description: "刻满符文的匕首，既是武器，也是仪式祭器。"
+  jagged_blade:
+    id: "jagged_blade"
+    name: "锯齿刃"
+    kind: "weapon"
+    stats: {attack: 22}
+    description: "用金属碎片打磨出的锯齿刃，凶器中的凶器。"
+  leather_coat:
+    id: "leather_coat"
+    name: "皮外套"
+    kind: "armor"
+    stats: {defense: 4}
+    description: "厚实的皮衣，能挡下一些攻击。"
+  riot_shield:
+    id: "riot_shield"
+    name: "防暴盾"
+    kind: "armor"
+    stats: {defense: 8}
+    description: "拼装出的简陋盾牌，大幅提升防御。"
+  escape_key:
+    id: "escape_key"
+    name: "逃生钥匙"
+    kind: "key"
+    description: "用古董碎片拼合的钥匙，能启动地铁站深处的逃生装置。"
+  signal_flare:
+    id: "signal_flare"
+    name: "信号弹"
+    kind: "key"
+    description: "能穿透黑雾发出求救信号的装置。"
+  ritual_grimoire:
+    id: "ritual_grimoire"
+    name: "仪式典籍"
+    kind: "key"
+    description: "记载黑雾仪式残页的典籍，仪式者梦寐以求。"
+  cursed_relic:
+    id: "cursed_relic"
+    name: "诅咒遗物"
+    kind: "key"
+    description: "被黑雾腐蚀过的古老遗物，是开启终焉之舞的钥匙。"
+  binoculars:
+    id: "binoculars"
+    name: "望远镜"
+    kind: "material"
+    description: "能远距离观察黑雾边界与敌情的望远镜。"
+
+# ── Recipes ────────────────────────────────────────────────────
+recipes:
+  - output_item_id: "bandage"
+    inputs: {cloth_scrap: 2}
+
+  - output_item_id: "jagged_blade"
+    inputs: {metal_scrap: 2, iron_pipe: 1, rope: 1}
+
+  - output_item_id: "riot_shield"
+    inputs: {metal_scrap: 2, leather_coat: 1}
+
+  - output_item_id: "antidote"
+    inputs: {herb: 2, water: 1}
+
+  - output_item_id: "escape_key"
+    inputs: {antique_fragment: 2}
+
+  - output_item_id: "signal_flare"
+    inputs: {battery: 1, transmitter_parts: 1, metal_scrap: 1}
+
+# ── Knowledge Sources ──────────────────────────────────────────
+knowledge_sources:
+  - id: "fog_lore"
+    name: "黑雾规律"
+    description: "你在图书馆的残页中读到了黑雾的成因，你的防御直觉提升了。"
+    acquisition: "search"
+    location_id: "library"
+    weight: 0.6
+    grants_knowledge: ["fog_lore"]
+    stat_bonus: {defense: 2}
+
+  - id: "ritual_cipher"
+    name: "仪式符文"
+    description: "你破解了教堂彩窗上的符文，理解了终焉之舞的真相。"
+    acquisition: "search"
+    location_id: "cathedral"
+    weight: 0.5
+    grants_knowledge: ["ritual_cipher"]
+
+  - id: "first_aid"
+    name: "急救术"
+    description: "亲手包扎让你掌握了基础的急救技巧。"
+    acquisition: "craft"
+    item_id: "bandage"
+    grants_knowledge: ["first_aid"]
+
+  - id: "escape_map"
+    name: "逃生地图"
+    description: "你摸清了地铁站的暗道，行动更加敏捷。"
+    acquisition: "search"
+    location_id: "metro_station"
+    weight: 0.5
+    grants_knowledge: ["escape_map"]
+    stat_bonus: {speed: 2}
+
+# ── Characters ─────────────────────────────────────────────────
+characters:
+  - id: "soldier"
+    name: "雷"
+    backstory: |
+      前特种兵，被派来执行一次不该存在的任务，醒来时城市已被黑雾吞没。
+      多年的战场直觉告诉你：在这座城里，规则只有一条——先下手为强。
+      只有消灭所有其他幸存者，你才能活着离开。
+    narration_style: "冷静警觉的军人视角：多用战场直觉、威胁评估、战术推演等措辞，短促有力，句句如命令。"
+    base_stats:
+      hp: 120
+      max_hp: 120
+      stamina: 100
+      max_stamina: 100
+      attack: 18
+      defense: 12
+      speed: 8
+    start_location: "city_center"
+    start_inventory: {rusty_knife: 1}
+    secret_objective: "消灭所有其他幸存者，确保这座城市的秘密不会泄露出去。"
+    victory_condition:
+      kind: "eliminate_all"
+      params: {}
+    abilities:
+      - id: "shock_assault"
+        name: "破甲突袭"
+        description: "消耗体力发动一次迅猛突袭，造成 16 点伤害。"
+        stamina_cost: 18
+        cooldown_rounds: 4
+        target: "single"
+        effects:
+          - {type: damage, target: single, amount: 16}
+
+  - id: "cultist"
+    name: "苏"
+    backstory: |
+      邪教徒，真名早已被遗忘在某个幽暗的角落。
+      黑雾不是灾难，而是恩赐。你比任何人都清楚——终焉之舞才是唯一的救赎。
+      收集仪式祭器，在黑雾彻底苏醒之时，完成那场古老的仪式。
+    narration_style: "神秘宿命的邪教视角：多用低语、献祭、黑雾、终焉等措辞，朦胧而虔诚，仿佛在诉说预言。"
+    base_stats:
+      hp: 100
+      max_hp: 100
+      stamina: 110
+      max_stamina: 110
+      attack: 12
+      defense: 8
+      speed: 9
+    start_location: "cathedral"
+    start_inventory: {black_candle: 1}
+    secret_objective: "取得仪式匕首(ritual_dagger)与诅咒遗物(cursed_relic)，在黑雾苏醒(fog_awakened)时回到大教堂(cathedral)完成终焉仪式。"
+    victory_condition:
+      kind: "custom_flag"
+      params:
+        required_items: ["ritual_dagger", "cursed_relic"]
+        at_location: "cathedral"
+        required_flags: ["fog_awakened"]
+    abilities:
+      - id: "black_fog_whisper"
+        name: "黑雾低语"
+        description: "以黑雾之力侵蚀一名对手所在区域的其他人，使其中毒。"
+        stamina_cost: 20
+        cooldown_rounds: 5
+        target: "single"
+        effects:
+          - {type: trigger_event, event_id: cultist_summoned}
+
+  - id: "thief"
+    name: "柯"
+    backstory: |
+      盗墓者兼古董商人，靠眼力吃饭，从不会把自己置于死地。
+      你一眼就看出，地铁站深处藏着一条逃生的暗道——只是需要钥匙和信号。
+      收集逃生钥匙和信号弹，在黑雾吞没一切之前离开这里。
+    narration_style: "精明谨慎的盗墓者视角：多用估量、线索、机关、退路等措辞，冷静而务实，处处给自己留后路。"
+    base_stats:
+      hp: 90
+      max_hp: 90
+      stamina: 115
+      max_stamina: 115
+      attack: 8
+      defense: 8
+      speed: 12
+    start_location: "antique_shop"
+    start_inventory: {antique_fragment: 1}
+    secret_objective: "收集逃生钥匙(escape_key)和信号弹(signal_flare)，到达地铁站(metro_station)启动逃生装置离开。"
+    victory_condition:
+      kind: "escape"
+      params:
+        required_items: ["escape_key", "signal_flare"]
+        at_location: "metro_station"
+    abilities:
+      - id: "lockpick_intuition"
+        name: "开锁直觉"
+        description: "多年的盗墓经验让你身法愈发灵活，永久提升 2 点速度。"
+        stamina_cost: 12
+        cooldown_rounds: 5
+        target: "self"
+        effects:
+          - {type: stat_bonus, stat: speed, amount: 2, target: self}
+
+  - id: "doctor"
+    name: "林"
+    backstory: |
+      心理医生，在末日的废墟里仍然保持着冷静。
+      你相信救援终会到来——只要能熬过黑雾最浓的这几夜。
+      活下去，等到天亮。
+    narration_style: "冷静观察的心理医生视角：多用观察、呼吸、创伤、时间等措辞，克制而富有同理心，却在危险前格外清醒。"
+    base_stats:
+      hp: 95
+      max_hp: 95
+      stamina: 105
+      max_stamina: 105
+      attack: 7
+      defense: 9
+      speed: 10
+    start_location: "hospital"
+    start_inventory: {herb: 2}
+    secret_objective: "熬过黑雾最浓的夜晚，存活到第 22 回合，等待救援降临。"
+    victory_condition:
+      kind: "survive_rounds"
+      params: {rounds: 22}
+    abilities:
+      - id: "emergency_triage"
+        name: "紧急救治"
+        description: "为自己做紧急处理，恢复 25 点生命。"
+        stamina_cost: 14
+        cooldown_rounds: 4
+        target: "self"
+        effects:
+          - {type: heal, amount: 25, target: self}
+
+# ── Random Events ──────────────────────────────────────────────
+# 黑雾事件随回合递增、逐层向内推进：从城郊 → 中环 → 内环 → 全城，
+# 形成"缩圈"般的生存压力。fog_awakening 会置起全局旗标 fog_awakened，
+# 供邪教徒的 custom_flag 胜利条件引用。
+random_events:
+  - id: "fog_whisper"
+    name: "黑雾初现"
+    description: "黑雾从城郊涌入，最先腐蚀最外围的区域。"
+    round_trigger: 4
+    weight: 1.0
+    effects:
+      - {type: damage, target: at_location, location_id: outskirts, amount: 6}
+      - {type: damage, target: at_location, location_id: ruins, amount: 6}
+      - {type: damage, target: at_location, location_id: graveyard, amount: 6}
+    narrative_seed: "灰黑色的雾墙越过了城郊，外围的街区开始被腐蚀。"
+
+  - id: "fog_spread"
+    name: "黑雾蔓延"
+    description: "黑雾继续向中环推进，工业区与剧院被雾气吞没。"
+    round_trigger: 8
+    weight: 1.0
+    effects:
+      - {type: damage, target: at_location, location_id: warehouse, amount: 8}
+      - {type: damage, target: at_location, location_id: old_theater, amount: 8}
+      - {type: damage, target: at_location, location_id: abandoned_factory, amount: 8}
+      - {type: damage, target: at_location, location_id: residential_block, amount: 8}
+    narrative_seed: "黑雾越过了中环，废弃的街区在雾中发出碎裂的声响。"
+
+  - id: "fog_surge"
+    name: "黑雾逼近"
+    description: "黑雾直逼内环，雾气开始侵蚀教堂与图书馆。"
+    round_trigger: 12
+    weight: 1.0
+    effects:
+      - {type: damage, target: at_location, location_id: cathedral, amount: 8}
+      - {type: damage, target: at_location, location_id: library, amount: 8}
+      - {type: damage, target: at_location, location_id: antique_shop, amount: 8}
+      - {type: damage, target: at_location, location_id: metro_station, amount: 8}
+      - {type: status, target: at_location, location_id: cathedral, status: poison, rounds: 3, magnitude: 3}
+    narrative_seed: "黑雾逼近内环，连空气中都弥漫着腐蚀性的毒素。"
+
+  - id: "fog_swallow"
+    name: "黑雾吞城"
+    description: "黑雾第一次吞没了整座城市，无人幸免。"
+    round_trigger: 16
+    weight: 1.0
+    effects:
+      - {type: damage, target: all, amount: 10}
+    narrative_seed: "黑雾吞没了整座城市，所有人都感到血肉在被啃噬。"
+
+  - id: "fog_awakening"
+    name: "终焉之舞"
+    description: "黑雾彻底苏醒，终焉之舞降临。古老仪式的大门被打开了。"
+    round_trigger: 18
+    weight: 1.0
+    effects:
+      - {type: damage, target: all, amount: 12}
+      - {type: set_global_flag, flag: fog_awakened}
+    narrative_seed: "钟声自鸣，黑雾化作无数舞动的人影——终焉之舞，开始了。"
+
+  - id: "fog_mercy"
+    name: "雾中恩赐"
+    description: "黑雾偶尔也会网开一面，庇护所里的伤者得到了片刻喘息。"
+    round_trigger: 10
+    weight: 0.5
+    repeatable: true
+    max_fires: 2
+    effects:
+      - {type: heal, target: at_location, location_id: hospital, amount: 20}
+      - {type: heal, target: at_location, location_id: city_center, amount: 20}
+    narrative_seed: "黑雾在庇护所外徘徊，却迟迟没有侵入，你感到一丝诡异的平静。"
+
+  - id: "cultist_summoned"
+    name: "黑雾低语"
+    description: "被邪教徒驱使的黑雾侵蚀了指定区域的其他人。"
+    round_trigger: null
+    max_fires: 5
+    effects:
+      - {type: damage, target: others_at_location, amount: 10}
+      - {type: status, target: others_at_location, status: poison, rounds: 3, magnitude: 3}
+    narrative_seed: "黑雾化作低语，扑向了那片区域的其他人！"
