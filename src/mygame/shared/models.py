@@ -43,14 +43,36 @@ class ItemDrop(BaseModel):
     max_count: int = 1
 
 
+class LocationPoint(BaseModel):
+    """A scripted special at a location: trap, NPC encounter, vision, hazard.
+
+    `trigger` selects which engine hook fires it (arrive / search / stay).
+    `effects` reuse the generic effect schema. `criticality` feeds the
+    three-axis criticality scorer so these moments get LLM narration.
+    """
+
+    id: str
+    name: str = ""
+    kind: Literal["trap", "npc_encounter", "vision", "hazard"] = "trap"
+    trigger: Literal["arrive", "search", "stay"] = "arrive"
+    chance: float = 1.0
+    repeatable: bool = False
+    effects: list[dict] = Field(default_factory=list)
+    narrative_seed: str = ""
+    criticality: float = 0.8
+
+
 class Location(BaseModel):
     id: str
     name: str
     description: str
     tags: list[str] = Field(default_factory=list)
     connections: dict[str, str] = Field(default_factory=dict)
+    travel_costs: dict[str, int] = Field(default_factory=dict)
+    coord: list[int] | None = None
     searchable_items: list[ItemDrop] = Field(default_factory=list)
     danger_level: int = 0
+    points: list[LocationPoint] = Field(default_factory=list)
 
 
 class Recipe(BaseModel):
@@ -83,6 +105,19 @@ class KnowledgeSource(BaseModel):
     stat_bonus: dict[str, int] = Field(default_factory=dict)
 
 
+class AbilityVariant(BaseModel):
+    """A conditional alternate form of an ability.
+
+    When an ability is used, the first variant whose `condition` matches
+    replaces the base `effects`. Conditions are data-driven dicts evaluated
+    against the actor/target/location/global state (see engine.conditions).
+    """
+
+    name: str = ""
+    condition: dict = Field(default_factory=dict)
+    effects: list[dict] = Field(default_factory=list)
+
+
 class AbilityDef(BaseModel):
     """A character-specific active ability.
 
@@ -98,6 +133,7 @@ class AbilityDef(BaseModel):
     cooldown_rounds: int = 0
     target: Literal["none", "self", "single", "location"] = "none"
     effects: list[dict] = Field(default_factory=list)
+    variants: list[AbilityVariant] = Field(default_factory=list)
 
 
 class VictoryCondition(BaseModel):
@@ -112,6 +148,41 @@ class VictoryCondition(BaseModel):
     params: dict = Field(default_factory=dict)
 
 
+class Objective(BaseModel):
+    """A data-driven goal: trigger condition → outcome.
+
+    `trigger` reuses VictoryCondition kinds (items/location/flags/rounds/
+    eliminate_all). `effects` are generic effects (stat_bonus / grant_item /
+    equip / trigger_event ...). `victory=True` means achieving it also wins —
+    winning is only one possible outcome (others: stat boost, new weapon, ...).
+    """
+
+    id: str = ""
+    name: str = ""
+    description: str = ""
+    trigger: VictoryCondition
+    effects: list[dict] = Field(default_factory=list)
+    victory: bool = False
+
+
+class FactionDef(BaseModel):
+    id: str
+    name: str
+    is_npc: bool = False
+    objective: Objective | None = None
+
+
+class CriticalityTrigger(BaseModel):
+    """Data-driven rule that makes an event more 'critical' for this character's
+    faction (identity/goal relevance). Matches on kind/item/location; `weight`
+    is added to that faction's round criticality."""
+
+    kind: str | None = None
+    item_id: str | None = None
+    location_id: str | None = None
+    weight: float = 0.8
+
+
 class CharacterDef(BaseModel):
     id: str
     name: str
@@ -121,8 +192,9 @@ class CharacterDef(BaseModel):
     base_stats: Stats
     start_location: str
     start_inventory: dict[str, int] = Field(default_factory=dict)
-    secret_objective: str
-    victory_condition: VictoryCondition
+    faction_id: str = ""
+    personal_objective: Objective | None = None
+    criticality_triggers: list[CriticalityTrigger] = Field(default_factory=list)
     abilities: list[AbilityDef] = Field(default_factory=list)
 
 
@@ -151,6 +223,7 @@ class ScenarioDef(BaseModel):
     recipes: list[Recipe] = Field(default_factory=list)
     knowledge_sources: list[KnowledgeSource] = Field(default_factory=list)
     characters: list[CharacterDef] = Field(default_factory=list)
+    factions: dict[str, FactionDef] = Field(default_factory=dict)
     random_events: list[RandomEvent] = Field(default_factory=list)
 
 
@@ -168,6 +241,7 @@ class Actor(BaseModel):
     character_id: str
     player_id: str
     player_name: str
+    faction_id: str = ""
     stats: Stats
     location_id: str
     inventory: dict[str, int] = Field(default_factory=dict)
@@ -179,6 +253,14 @@ class Actor(BaseModel):
     learned_sources: set[str] = Field(default_factory=set)
     ability_cooldowns: dict[str, int] = Field(default_factory=dict)
     objective_progress: dict = Field(default_factory=dict)
+    travel_from: str | None = None
+    travel_to: str | None = None
+    travel_direction: str | None = None
+    travel_remaining: int = 0
+
+    @property
+    def traveling(self) -> bool:
+        return self.travel_remaining > 0
 
 
 class LocationRuntime(BaseModel):
@@ -215,6 +297,7 @@ class GameState(BaseModel):
     global_flags: set[str] = Field(default_factory=set)
     fired_events: dict[str, int] = Field(default_factory=dict)
     event_log: list[GameEvent] = Field(default_factory=list)
+    settled_objectives: set[str] = Field(default_factory=set)
     winner_ids: list[str] = Field(default_factory=list)
 
 
@@ -232,6 +315,7 @@ class ActionType(StrEnum):
     TALK = "talk"
     WAIT = "wait"
     SPECIAL = "special"
+    CANCEL = "cancel"
 
 
 class Action(BaseModel):
@@ -260,6 +344,17 @@ class LegalAction(BaseModel):
     params_schema: dict = Field(default_factory=dict)
 
 
+class MapLocation(BaseModel):
+    """Public map layout entry sent to clients for rendering."""
+
+    id: str
+    name: str
+    coord: list[int] = Field(default_factory=list)
+    danger_level: int = 0
+    connections: dict[str, str] = Field(default_factory=dict)
+    travel_costs: dict[str, int] = Field(default_factory=dict)
+
+
 class PlayerView(BaseModel):
     round: int
     phase: GamePhase
@@ -275,4 +370,11 @@ class PlayerView(BaseModel):
     visible_actors: list[VisibleActor] = Field(default_factory=list)
     legal_actions: list[LegalAction] = Field(default_factory=list)
     secret_objective: str = ""
+    faction_id: str = ""
+    faction_name: str = ""
+    faction_objective: str = ""
     alive: bool = True
+    map: list[MapLocation] = Field(default_factory=list)
+    travel_from: str | None = None
+    travel_to: str | None = None
+    travel_remaining: int = 0

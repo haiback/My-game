@@ -23,6 +23,9 @@ locations:
     connections:
       north: "jungle_edge"
       east: "rocky_shore"
+    coord: [0, 0]
+    travel_costs:
+      east: 2
     searchable_items:
       - item_id: "cloth_scrap"
         weight: 3.0
@@ -45,6 +48,11 @@ locations:
       north: "ancient_ruins"
       east: "river_crossing"
       west: "dark_cave"
+    coord: [0, -1]
+    travel_costs:
+      north: 2
+      east: 2
+      west: 2
     searchable_items:
       - item_id: "herb"
         weight: 3.0
@@ -65,6 +73,10 @@ locations:
     connections:
       west: "beach_camp"
       north: "cliff_path"
+    coord: [2, 0]
+    travel_costs:
+      west: 2
+      north: 3
     searchable_items:
       - item_id: "rusty_knife"
         weight: 1.0
@@ -85,6 +97,10 @@ locations:
     connections:
       east: "jungle_edge"
       deep: "cave_heart"
+    coord: [-2, -1]
+    travel_costs:
+      east: 2
+      deep: 2
     searchable_items:
       - item_id: "glowing_moss"
         weight: 2.0
@@ -101,6 +117,9 @@ locations:
     tags: ["indoor", "mysterious", "ritual_site"]
     connections:
       out: "dark_cave"
+    coord: [-2, -3]
+    travel_costs:
+      out: 2
     searchable_items:
       - item_id: "ritual_artifact"
         weight: 1.0
@@ -116,6 +135,10 @@ locations:
       west: "jungle_edge"
       east: "highland"
       north: "waterfall"
+    coord: [2, -2]
+    travel_costs:
+      west: 2
+      east: 2
     searchable_items:
       - item_id: "bamboo"
         weight: 3.0
@@ -134,6 +157,11 @@ locations:
       south: "jungle_edge"
       up: "tower_top"
       east: "sacred_grove"
+    coord: [0, -3]
+    travel_costs:
+      south: 2
+      up: 2
+      east: 2
     searchable_items:
       - item_id: "stone_tablet"
         weight: 1.0
@@ -153,6 +181,9 @@ locations:
     tags: ["outdoor", "high_ground", "signal_point"]
     connections:
       down: "ancient_ruins"
+    coord: [-1, -4]
+    travel_costs:
+      down: 2
     searchable_items:
       - item_id: "broken_transmitter"
         weight: 1.0
@@ -170,6 +201,10 @@ locations:
     connections:
       west: "ancient_ruins"
       north: "volcano_path"
+    coord: [2, -3]
+    travel_costs:
+      west: 2
+      north: 2
     searchable_items:
       - item_id: "rare_herb"
         weight: 3.0
@@ -189,6 +224,7 @@ locations:
     tags: ["indoor", "water_source", "hidden"]
     connections:
       south: "river_crossing"
+    coord: [3, -2]
     searchable_items:
       - item_id: "waterproof_bag"
         weight: 1.0
@@ -207,6 +243,11 @@ locations:
       west: "river_crossing"
       south: "volcano_path"
       north: "cliff_path"
+    coord: [3, -3]
+    travel_costs:
+      west: 2
+      south: 2
+      north: 3
     searchable_items:
       - item_id: "binoculars"
         weight: 0.5
@@ -224,6 +265,10 @@ locations:
     connections:
       south: "highland"
       west: "rocky_shore"
+    coord: [3, -1]
+    travel_costs:
+      south: 3
+      west: 3
     searchable_items:
       - item_id: "rope"
         weight: 1.5
@@ -242,6 +287,11 @@ locations:
       north: "highland"
       south: "sacred_grove"
       up: "volcano_crater"
+    coord: [1, -4]
+    travel_costs:
+      north: 2
+      south: 2
+      up: 3
     searchable_items:
       - item_id: "sulfur_stone"
         weight: 2.0
@@ -258,6 +308,9 @@ locations:
     tags: ["outdoor", "dangerous", "extreme", "ritual_site"]
     connections:
       down: "volcano_path"
+    coord: [1, -5]
+    travel_costs:
+      down: 3
     searchable_items:
       - item_id: "volcanic_core"
         weight: 0.3
@@ -568,10 +621,10 @@ characters:
       speed: 8
     start_location: "beach_camp"
     start_inventory: {rusty_knife: 1}
-    secret_objective: "你是唯一知道这座岛屿军事秘密的人。消灭所有其他幸存者，确保秘密不会外泄。"
-    victory_condition:
-      kind: "eliminate_all"
-      params: {}
+    personal_objective:
+      description: "你是唯一知道这座岛屿军事秘密的人。消灭所有其他幸存者，确保秘密不会外泄。"
+      trigger: {kind: "eliminate_all", params: {}}
+      victory: true
     abilities:
       - id: "quick_strike"
         name: "迅捷突刺"
@@ -600,10 +653,12 @@ characters:
       speed: 10
     start_location: "jungle_edge"
     start_inventory: {herb: 2}
-    secret_objective: "研究岛上的三种特殊昆虫（通过搜索特定地点获取知识），学会控制它们的方法，用昆虫的力量消灭或威慑所有其他幸存者。"
-    victory_condition:
-      kind: "custom_flag"
-      params: {required_knowledge: ["insect_alpha", "insect_beta", "insect_gamma"]}
+    personal_objective:
+      description: "研究岛上的三种特殊昆虫（通过搜索特定地点获取知识），学会控制它们的方法，用昆虫的力量消灭或威慑所有其他幸存者。"
+      trigger:
+        kind: "custom_flag"
+        params: {required_knowledge: ["insect_alpha", "insect_beta", "insect_gamma"]}
+      victory: true
     abilities:
       - id: "summon_swarm"
         name: "虫群召来"
@@ -632,10 +687,12 @@ characters:
       speed: 9
     start_location: "ancient_ruins"
     start_inventory: {}
-    secret_objective: "收集2块石板铭文(stone_tablet)、1个损坏的发射器(broken_transmitter)和1个电池(battery)，到达塔楼顶端(tower_top)发出求救信号。"
-    victory_condition:
-      kind: "collect_items"
-      params: {item_ids: ["stone_tablet", "broken_transmitter", "battery"], at_location: "tower_top"}
+    personal_objective:
+      description: "收集2块石板铭文(stone_tablet)、1个损坏的发射器(broken_transmitter)和1个电池(battery)，到达塔楼顶端(tower_top)发出求救信号。"
+      trigger:
+        kind: "collect_items"
+        params: {item_ids: ["stone_tablet", "broken_transmitter", "battery"], at_location: "tower_top"}
+      victory: true
     abilities:
       - id: "decipher"
         name: "铭文解读"
@@ -664,10 +721,12 @@ characters:
       speed: 12
     start_location: "dark_cave"
     start_inventory: {glowing_moss: 1}
-    secret_objective: "获取仪式器物(ritual_artifact)和火山之心(volcanic_core)，到达火山口完成远古仪式，唤醒岛屿的力量。"
-    victory_condition:
-      kind: "custom_flag"
-      params: {required_items: ["ritual_artifact", "volcanic_core"], at_location: "volcano_crater"}
+    personal_objective:
+      description: "获取仪式器物(ritual_artifact)和火山之心(volcanic_core)，到达火山口完成远古仪式，唤醒岛屿的力量。"
+      trigger:
+        kind: "custom_flag"
+        params: {required_items: ["ritual_artifact", "volcanic_core"], at_location: "volcano_crater"}
+      victory: true
     abilities:
       - id: "shadow_strike"
         name: "暗影打击"

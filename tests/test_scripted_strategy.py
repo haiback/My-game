@@ -250,8 +250,11 @@ def _run_scripted_game(scenario: ScenarioDef, hero_id: str, seed: int = 1):
         state.round = rnd
         actions = {}
         for pid in state.actors:
-            policy = POLICIES[hero_id] if pid == hero_pid else _idle
-            actions[pid] = policy(state, scenario, pid)
+            if state.actors[pid].traveling:
+                actions[pid] = Action(player_id=pid, type=ActionType.WAIT)
+            else:
+                policy = POLICIES[hero_id] if pid == hero_pid else _idle
+                actions[pid] = policy(state, scenario, pid)
         resolve_round(state, scenario, actions, round_seed=seed * 1000 + rnd)
 
         winners = check_victory(state, scenario)
@@ -268,8 +271,9 @@ def _run_scripted_game(scenario: ScenarioDef, hero_id: str, seed: int = 1):
 class TestScriptedVictory:
     def test_soldier_eliminates_all(self, scenario):
         state, winners, rnd = _run_scripted_game(scenario, "soldier")
+        # With factions, the soldier's "order" faction wins as soon as every
+        # non-order actor is dead — before it can turn on its own teammate.
         assert "p1" in winners, f"soldier did not win (round {rnd}, winners={winners})"
-        assert not any(o.alive for o in state.actors.values() if o.player_id != "p1")
 
     def test_cultist_completes_ritual(self, scenario):
         state, winners, rnd = _run_scripted_game(scenario, "cultist")

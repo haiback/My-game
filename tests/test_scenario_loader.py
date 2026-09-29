@@ -79,7 +79,7 @@ class TestScenarioLoader:
                 assert item_id in island_scenario.items
 
     def test_character_victory_conditions(self, island_scenario):
-        kinds = {c.id: c.victory_condition.kind for c in island_scenario.characters}
+        kinds = {c.id: c.personal_objective.trigger.kind for c in island_scenario.characters}
         assert kinds["ex_soldier"] == "eliminate_all"
         assert kinds["entomologist"] == "custom_flag"
         assert kinds["archaeologist"] == "collect_items"

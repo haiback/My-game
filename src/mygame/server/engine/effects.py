@@ -27,7 +27,6 @@ from mygame.shared.models import (
     ScenarioDef,
     StatusEffect,
 )
-from mygame.server.engine.state import grant_knowledge
 
 _MAX_DEPTH = 5
 
@@ -229,6 +228,8 @@ def _apply_one(
         )]
 
     if etype == "grant_knowledge":
+        from mygame.server.engine.state import grant_knowledge
+
         source_id = str(eff.get("source", ""))
         evt = grant_knowledge(state, scenario, player_id, source_id)
         return [evt] if evt else []
@@ -265,6 +266,7 @@ def _resolve_targets(
         return [
             pid for pid in alive
             if state.actors[pid].location_id == loc
+            and not state.actors[pid].traveling
         ]
     if target == "others_at_location":
         loc = eff.get("location_id") or context.get("location")
@@ -274,5 +276,6 @@ def _resolve_targets(
         return [
             pid for pid in alive
             if pid != src and state.actors[pid].location_id == loc
+            and not state.actors[pid].traveling
         ]
     return []

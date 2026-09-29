@@ -25,7 +25,7 @@ from mygame.shared.models import (
 )
 from mygame.server.engine.rules import resolve_round
 from mygame.server.engine.state import compute_player_view
-from mygame.server.engine.winconditions import check_victory
+from mygame.server.engine.winconditions import check_victory, settle_objectives
 
 
 @dataclass
@@ -152,6 +152,7 @@ class GameLoop:
             self.state, self.scenario, actions,
             round_seed=self.state.round * 1000 + hash(self.state.id) % 1000,
         )
+        events.extend(settle_objectives(self.state, self.scenario))
 
         self.state.event_log.extend(events)
 

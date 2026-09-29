@@ -173,3 +173,77 @@ def render_lobby(
         lines.append(f"    [dim]{c['backstory'][:80]}...[/dim]")
 
     return "\n".join(lines)
+
+
+def render_map(
+    map_data: list[dict],
+    my_location: str,
+    traveling: bool,
+    travel_to: str | None,
+    visible_actors: list[dict],
+) -> str:
+    """Render a compact ASCII map from location coords.
+
+    Each location is a short ASCII code; the legend maps code → name + danger.
+    Self is highlighted yellow, visible enemies red, in-transit destination cyan.
+    """
+    pts = [
+        (m["id"], m.get("coord"), m["name"], m.get("danger_level", 0))
+        for m in map_data
+    ]
+    pts = [p for p in pts if p[1] and len(p[1]) == 2]
+    if not pts:
+        return ""
+
+    codes: dict[str, str] = {}
+    used: set[str] = set()
+    for lid, _, _, _ in pts:
+        for n in (2, 3, 4, 5):
+            code = lid[:n]
+            if code not in used:
+                used.add(code)
+                codes[lid] = code
+                break
+        else:
+            codes[lid] = lid[:5]
+
+    width = max(len(c) for c in codes.values())
+    gap = " " * (width + 1)
+
+    grid: dict[tuple[int, int], str] = {}
+    for lid, coord, _, _ in pts:
+        grid[(coord[0], coord[1])] = lid
+
+    xs = [c[0] for c in grid]
+    ys = [c[1] for c in grid]
+    minx, maxx = min(xs), max(xs)
+    miny, maxy = min(ys), max(ys)
+
+    enemy_locs = {a.get("location_id") for a in visible_actors}
+
+    rows: list[str] = []
+    for y in range(miny, maxy + 1):
+        row: list[str] = []
+        for x in range(minx, maxx + 1):
+            lid = grid.get((x, y))
+            if lid is None:
+                row.append(gap)
+                continue
+            _, _, name, danger = next(p for p in pts if p[0] == lid)
+            code = codes[lid].ljust(width)
+            if lid == my_location and not traveling:
+                row.append(f"[bold yellow]{code}[/bold yellow]")
+            elif traveling and lid == travel_to:
+                row.append(f"[bold cyan]{code}[/bold cyan]")
+            elif lid in enemy_locs:
+                row.append(f"[bold red]{code}[/bold red]")
+            else:
+                color = "red" if danger >= 5 else "yellow" if danger >= 3 else "green"
+                row.append(f"[{color}]{code}[/{color}]")
+        rows.append("".join(row))
+
+    legend = []
+    for lid, _, name, danger in pts:
+        legend.append(f"  [dim]{codes[lid]}[/dim] {name} (危险{danger})")
+
+    return "\n".join(rows) + "\n\n" + "\n".join(legend)

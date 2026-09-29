@@ -13,8 +13,11 @@ from mygame.server.ai.parser import IntentParser, ParseResult
 from mygame.server.engine.state import PlayerAssignment, compute_player_view, init_game
 from mygame.shared.models import (
     CharacterDef,
+    FactionDef,
+    GameEvent,
     Item,
     Location,
+    Objective,
     Recipe,
     ScenarioDef,
     Stats,
@@ -53,11 +56,7 @@ class FailingNarrator:
     def __init__(self):
         self.calls = 0
 
-    async def narrate(self, *args, **kwargs):
-        self.calls += 1
-        raise RuntimeError("boom")
-
-    async def narrate_world(self, *args, **kwargs):
+    async def narrate_faction(self, *args, **kwargs):
         self.calls += 1
         raise RuntimeError("boom")
 
@@ -85,13 +84,14 @@ def make_scenario() -> ScenarioDef:
         characters=[
             CharacterDef(
                 id="c1", name="Warrior", backstory="", base_stats=Stats(),
-                start_location="a", secret_objective="", victory_condition=VictoryCondition(kind="survive_rounds"),
+                start_location="a", faction_id="f",
             ),
             CharacterDef(
                 id="c2", name="Doctor", backstory="", base_stats=Stats(),
-                start_location="b", secret_objective="", victory_condition=VictoryCondition(kind="survive_rounds"),
+                start_location="b", faction_id="f",
             ),
         ],
+        factions={"f": FactionDef(id="f", name="F")},
     )
 
 
@@ -333,92 +333,78 @@ class TestNarrator:
     def _narrator(self, response: str) -> Narrator:
         return Narrator(client=FakeClient(response), model="m")
 
+    def _faction(self) -> FactionDef:
+        return FactionDef(
+            id="f",
+            name="F",
+            objective=Objective(
+                description="消灭所有敌人。",
+                trigger=VictoryCondition(kind="eliminate_all"),
+            ),
+        )
+
+    async def _member(self):
+        scenario = make_scenario()
+        players = [PlayerAssignment(player_id="p1", player_name="P1", character_id="c1")]
+        state = init_game(scenario, players)
+        return scenario, state.actors["p1"]
+
     async def test_returns_text(self):
         narrator = self._narrator("你搜索了沙滩，发现一卷绷带。")
-        scenario = make_scenario()
-        players = [
-            PlayerAssignment(player_id="p1", player_name="P1", character_id="c1"),
-        ]
-        state = init_game(scenario, players)
-        actor = state.actors["p1"]
-
-        from mygame.shared.models import GameEvent
+        scenario, actor = await self._member()
         events = [GameEvent(round=1, kind="search_found", actor_ids=["p1"], narrative_seed="P1 found Herb at A.")]
-        text = await narrator.narrate(actor, 1, events, scenario)
+        text = await narrator.narrate_faction(self._faction(), [actor], 1, events, scenario)
         assert text == "你搜索了沙滩，发现一卷绷带。"
 
     async def test_prompt_contains_facts(self):
         narrator = self._narrator("ok")
-        scenario = make_scenario()
-        players = [PlayerAssignment(player_id="p1", player_name="P1", character_id="c1")]
-        state = init_game(scenario, players)
-        actor = state.actors["p1"]
-
-        from mygame.shared.models import GameEvent
+        scenario, actor = await self._member()
         events = [GameEvent(round=2, kind="attack", actor_ids=["p1", "p2"], narrative_seed="P1 attacked P2.")]
-        await narrator.narrate(actor, 2, events, scenario)
+        await narrator.narrate_faction(self._faction(), [actor], 2, events, scenario)
         prompt = narrator.client.prompts[0]
         assert "P1" in prompt
         assert "P1 attacked P2" in prompt
 
-    async def test_empty_response_raises(self):
-        narrator = self._narrator("   ")
-        scenario = make_scenario()
-        players = [PlayerAssignment(player_id="p1", player_name="P1", character_id="c1")]
-        state = init_game(scenario, players)
-        actor = state.actors["p1"]
-
-        from mygame.shared.models import GameEvent
-        events = [GameEvent(round=1, kind="wait", actor_ids=["p1"], narrative_seed="P1 waited.")]
-        with pytest.raises(ValueError):
-            await narrator.narrate(actor, 1, events, scenario)
-
-    async def test_prompt_includes_world_summary_and_others(self):
+    async def test_prompt_includes_objective_and_history(self):
         narrator = self._narrator("ok")
-        scenario = make_scenario()
-        players = [PlayerAssignment(player_id="p1", player_name="P1", character_id="c1")]
-        state = init_game(scenario, players)
-        actor = state.actors["p1"]
-
-        from mygame.shared.models import GameEvent
+        scenario, actor = await self._member()
         events = [GameEvent(round=3, kind="move", actor_ids=["p2"], narrative_seed="P2 moved.")]
-        await narrator.narrate(
-            actor, 3, events, scenario,
-            world_summary="有人穿过迷雾。",
-            others_summary="P2(Doctor) 与你同处一地, 存活",
-            upcoming_threat="黑雾蔓延——雾气逼近中环。",
+        await narrator.narrate_faction(
+            self._faction(), [actor], 3, events, scenario,
             history=["上一回合你在废墟中搜寻。"],
         )
         prompt = narrator.client.prompts[0]
-        assert "有人穿过迷雾" in prompt
-        assert "P2(Doctor) 与你同处一地" in prompt
-        assert "黑雾蔓延" in prompt
+        assert "消灭所有敌人" in prompt
         assert "上一回合你在废墟中搜寻" in prompt
 
     async def test_prompt_includes_identity_focus(self):
-        scenario = make_scenario()
+        scenario, actor = await self._member()
         scenario.characters[0].focus = "你更在意威胁与战术。"
         narrator = self._narrator("ok")
-        players = [PlayerAssignment(player_id="p1", player_name="P1", character_id="c1")]
-        state = init_game(scenario, players)
-        actor = state.actors["p1"]
-
-        from mygame.shared.models import GameEvent
         events = [GameEvent(round=1, kind="wait", actor_ids=["p1"], narrative_seed="P1 waited.")]
-        await narrator.narrate(actor, 1, events, scenario)
+        await narrator.narrate_faction(self._faction(), [actor], 1, events, scenario)
         assert "你更在意威胁与战术" in narrator.client.prompts[0]
 
-    async def test_narrate_world_empty_events_returns_empty(self):
-        narrator = self._narrator("不应被调用")
-        assert await narrator.narrate_world(1, []) == ""
+    async def test_empty_response_raises(self):
+        narrator = self._narrator("   ")
+        scenario, actor = await self._member()
+        events = [GameEvent(round=1, kind="wait", actor_ids=["p1"], narrative_seed="P1 waited.")]
+        with pytest.raises(ValueError):
+            await narrator.narrate_faction(self._faction(), [actor], 1, events, scenario)
 
-    async def test_narrate_world_builds_public_prompt(self):
-        narrator = self._narrator("黑雾越过城郊。")
-        from mygame.shared.models import GameEvent
-        events = [GameEvent(round=4, kind="random_event", actor_ids=[], narrative_seed="雾墙越过城郊。")]
-        text = await narrator.narrate_world(4, events)
-        assert text == "黑雾越过城郊。"
-        assert "雾墙越过城郊" in narrator.client.prompts[0]
+    async def test_rejects_new_numeral(self):
+        narrator = self._narrator("你的生命值跌到了 43 点。")
+        scenario, actor = await self._member()
+        events = [GameEvent(round=1, kind="attack", actor_ids=["p1"], narrative_seed="P1 got hit.")]
+        with pytest.raises(ValueError):
+            await narrator.narrate_faction(self._faction(), [actor], 1, events, scenario)
+
+    async def test_accepts_numeral_present_in_facts(self):
+        narrator = self._narrator("你的生命值 100 点，还算充沛。")
+        scenario, actor = await self._member()
+        events = [GameEvent(round=1, kind="wait", actor_ids=["p1"], narrative_seed="P1 waited.")]
+        text = await narrator.narrate_faction(self._faction(), [actor], 1, events, scenario)
+        assert text == "你的生命值 100 点，还算充沛。"
 
 
 # ---------------------------------------------------------------------------
@@ -450,7 +436,7 @@ class TestAIService:
         assert r3.action is None
         assert failing.calls == 2
 
-    async def test_narrate_round_degrades_to_none(self):
+    async def test_narrate_faction_degrades_to_none(self):
         service = self._service(threshold=2)
         failing = FailingNarrator()
         service.narrator = failing
@@ -459,31 +445,11 @@ class TestAIService:
         players = [PlayerAssignment(player_id="p1", player_name="P1", character_id="c1")]
         state = init_game(scenario, players)
         actor = state.actors["p1"]
+        faction = FactionDef(id="f", name="F")
 
-        from mygame.shared.models import GameEvent
         events = [GameEvent(round=1, kind="wait", actor_ids=["p1"], narrative_seed="P1 waited.")]
 
-        assert await service.narrate_round(actor, 1, events, scenario) is None
-        assert await service.narrate_round(actor, 1, events, scenario) is None
-        assert await service.narrate_round(actor, 1, events, scenario) is None
+        assert await service.narrate_faction(faction, [actor], 1, events, scenario) is None
+        assert await service.narrate_faction(faction, [actor], 1, events, scenario) is None
+        assert await service.narrate_faction(faction, [actor], 1, events, scenario) is None
         assert failing.calls == 2
-
-    async def test_narrate_world_degrades_to_none(self):
-        service = self._service(threshold=2)
-        failing = FailingNarrator()
-        service.narrator = failing
-
-        from mygame.shared.models import GameEvent
-        events = [GameEvent(round=1, kind="move", actor_ids=["p1"], narrative_seed="P1 moved.")]
-
-        assert await service.narrate_world(1, events) is None
-        assert await service.narrate_world(1, events) is None
-        assert await service.narrate_world(1, events) is None
-        assert failing.calls == 2
-
-    async def test_narrate_world_skips_when_no_public_events(self):
-        service = self._service(threshold=2)
-        failing = FailingNarrator()
-        service.narrator = failing
-        assert await service.narrate_world(1, []) is None
-        assert failing.calls == 0

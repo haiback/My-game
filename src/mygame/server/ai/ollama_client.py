@@ -24,11 +24,15 @@ class OllamaClient:
         base_url: str = "http://localhost:11434",
         timeout_seconds: float = 30.0,
         max_retries: int = 1,
+        num_ctx: int | None = None,
+        num_predict: int | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
+        self.num_ctx = num_ctx
+        self.num_predict = num_predict
         self._client = httpx.AsyncClient(
             timeout=httpx.Timeout(timeout_seconds), transport=transport
         )
@@ -40,11 +44,16 @@ class OllamaClient:
         system: str | None = None,
         temperature: float = 0.1,
     ) -> str:
+        options: dict[str, float | int] = {"temperature": temperature}
+        if self.num_ctx is not None:
+            options["num_ctx"] = self.num_ctx
+        if self.num_predict is not None:
+            options["num_predict"] = self.num_predict
         payload = {
             "model": model,
             "prompt": prompt,
             "stream": False,
-            "options": {"temperature": temperature},
+            "options": options,
         }
         if system:
             payload["system"] = system

@@ -5,13 +5,18 @@ server:
 ollama:
   base_url: "http://localhost:11434"
   parser_model: "qwen2.5:3b"
-  narrator_model: "qwen2.5:7b"
+  narrator_model: "qwen2.5:3b"
   parser_temperature: 0.1
   narrator_temperature: 0.8
-  timeout_seconds: 30
+  timeout_seconds: 180
   max_retries: 1
+  num_ctx: 4096
+  num_predict: 400
   circuit_breaker_threshold: 3
   probe_interval_seconds: 60
+  # OLLAMA_NUM_PARALLEL 是 Ollama 服务端环境变量(非请求参数), 在启动 ollama serve 时设置,
+  # 让同一模型的并发请求真正并行。势力级叙事时建议设为势力数(如 3)。
+  #   e.g.  OLLAMA_NUM_PARALLEL=3 ollama serve
 
 game:
   round_time_seconds: 45

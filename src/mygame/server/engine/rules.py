@@ -24,16 +24,20 @@ from mygame.shared.models import (
     GameState,
     ScenarioDef,
 )
+from mygame.server.engine.conditions import select_variant
 from mygame.server.engine.effects import apply_effects, fire_event
 from mygame.server.engine.state import (
     attack_actor,
+    cancel_travel,
     craft_item,
     equip_item,
     get_alive_actors,
     move_actor,
+    progress_travel,
     rest_actor,
     search_location,
     tick_status_effects,
+    trigger_location_points,
     use_item,
     apply_danger_damage,
 )
@@ -41,6 +45,7 @@ from mygame.server.engine.state import (
 _RESOLUTION_ORDER = [
     {ActionType.TALK, ActionType.WAIT},
     {ActionType.USE, ActionType.REST, ActionType.SPECIAL},
+    {ActionType.CANCEL},
     {ActionType.MOVE},
     {ActionType.SEARCH, ActionType.CRAFT},
     {ActionType.ATTACK},
@@ -88,7 +93,7 @@ def _resolve_tier(
     ]
 
     if ActionType.MOVE in tier:
-        move_events = _resolve_moves(state, scenario, tier_actions)
+        move_events = _resolve_moves(state, scenario, tier_actions, rng)
         events.extend(move_events)
         return events
 
@@ -112,12 +117,13 @@ def _resolve_moves(
     state: GameState,
     scenario: ScenarioDef,
     moves: list[tuple[str, Action]],
+    rng: random.Random,
 ) -> list[GameEvent]:
     events: list[GameEvent] = []
 
     for pid, act in moves:
         direction = act.params.get("direction", "")
-        evts = move_actor(state, scenario, pid, direction)
+        evts = move_actor(state, scenario, pid, direction, rng)
         events.extend(evts)
 
     return events
@@ -181,6 +187,8 @@ def _resolve_single(
             return craft_item(state, scenario, player_id, recipe_index)
         case ActionType.SPECIAL:
             return _resolve_special(state, scenario, player_id, action, rng)
+        case ActionType.CANCEL:
+            return cancel_travel(state, scenario, player_id)
         case _:
             return None
 
@@ -218,6 +226,8 @@ def _resolve_special(
             target_pid = _first_opponent(state, player_id)
         if target_pid is None:
             return []
+        if actor.traveling or state.actors[target_pid].traveling:
+            return []
         if state.actors[target_pid].location_id != actor.location_id:
             return []
 
@@ -230,6 +240,12 @@ def _resolve_special(
     actor.stats.stamina -= ability.stamina_cost
     actor.ability_cooldowns[ability.id] = ability.cooldown_rounds
 
+    variant_name, variant_effects = select_variant(
+        state, scenario, actor, context, ability.variants
+    )
+    effects = variant_effects or ability.effects
+    display_name = f"{ability.name}·{variant_name}" if variant_name else ability.name
+
     events = [GameEvent(
         round=state.round,
         kind="ability_used",
@@ -237,19 +253,25 @@ def _resolve_special(
         payload={
             "ability_id": ability.id,
             "ability_name": ability.name,
+            "variant": variant_name,
             "target": target_pid,
         },
         visibility="public",
-        narrative_seed=f"{actor.player_name} used ability: {ability.name}.",
+        narrative_seed=f"{actor.player_name} used ability: {display_name}.",
     )]
-    events.extend(apply_effects(state, scenario, ability.effects, context, rng))
+    events.extend(apply_effects(state, scenario, effects, context, rng))
     return events
 
 
 def _first_opponent(state: GameState, player_id: str) -> str | None:
     actor = state.actors[player_id]
     for pid, other in state.actors.items():
-        if pid != player_id and other.alive and other.location_id == actor.location_id:
+        if (
+            pid != player_id
+            and other.alive
+            and not other.traveling
+            and other.location_id == actor.location_id
+        ):
             return pid
     return None
 
@@ -268,6 +290,14 @@ def _resolve_round_end(
         evt = apply_danger_damage(state, scenario, actor.player_id)
         if evt:
             events.append(evt)
+
+    events.extend(progress_travel(state, scenario, rng))
+
+    for actor in get_alive_actors(state):
+        if not actor.traveling:
+            events.extend(
+                trigger_location_points(state, scenario, actor.player_id, "stay", rng)
+            )
 
     events.extend(_resolve_random_events(state, scenario, rng))
 

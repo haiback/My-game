@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 from mygame.server.ai.manager import AIService
@@ -31,6 +32,34 @@ from mygame.shared.models import (
 
 log = logging.getLogger(__name__)
 
+# Base "dramatic weight" per event kind — axis 1 of the three-axis criticality
+# scorer. Ordinary rounds (move/search/rest/equip/talk/travel) score ~0 and fall
+# back to template narration so a round never blocks on a 7b request for
+# mundane events. Axis 2 (character criticality_triggers) and axis 3 (location
+# points) add on top; a faction is narrated when its best event clears the bar.
+BASE_WEIGHT = {
+    "death": 2.0,
+    "attack": 1.0,
+    "random_event": 1.0,
+    "npc_encounter": 1.0,
+    "trap": 0.9,
+    "ability_used": 0.8,
+    "vision": 0.8,
+    "hazard": 0.7,
+    "event_damage": 0.7,
+    "knowledge_gained": 0.7,
+    "status_applied": 0.5,
+    "status_damage": 0.3,
+    "event_heal": 0.3,
+    "stat_bonus": 0.3,
+    "event_stamina": 0.2,
+    "talk": 0.2,
+    "craft": 0.2,
+    "danger_damage": 0.1,
+    "search_found": 0.1,
+}
+CRITICAL_THRESHOLD = 0.6
+
 
 class RoomTask:
     def __init__(self, room: Room, round_time: int = 45, ai: AIService | None = None):
@@ -41,7 +70,7 @@ class RoomTask:
         self.loop: GameLoop | None = None
         self._task: asyncio.Task | None = None
         self._connections: dict[str, Any] = {}
-        self._narration_history: dict[str, list[str]] = {}
+        self._faction_history: dict[str, list[str]] = {}
 
     async def start(self) -> None:
         assignments = [
@@ -73,6 +102,12 @@ class RoomTask:
         await self._broadcast_game_start()
 
         self._task = asyncio.create_task(self.loop.run())
+
+        if self.ai is not None:
+            # Pre-generate location flavor in the background; until it lands,
+            # ordinary rounds fall back to plain narrative_seed templates.
+            asyncio.create_task(self.ai.library.generate(self.room.scenario))
+
         log.info("Game started in room %s with %d players", self.room.code, len(assignments))
 
     async def submit_action(self, player_id: str, action: Action) -> bool:
@@ -128,118 +163,193 @@ class RoomTask:
                 })
 
         if self.ai and self.state:
-            await self._narrate_with_ai(events)
+            await self._narrate_factions(events)
         else:
             await self._narrate_template(events)
 
-    async def _narrate_with_ai(self, events: list[GameEvent]) -> None:
-        assert self.state is not None
-        scenario = self.room.scenario
-        round_num = self.state.round
+    def _faction_critical(self, faction_id: str, events: list[GameEvent]) -> bool:
+        """Whether a faction's round deserves real-time LLM narration.
 
-        # Shared world-side summary of public events, produced once per round.
-        public_events = [ev for ev in events if ev.visibility == "public"]
-        world_summary = await self.ai.narrate_world(round_num, public_events)
-
-        upcoming_threat = self._upcoming_threat(round_num)
-
-        tasks: dict[str, asyncio.Task] = {}
-        for pid, actor in self.state.actors.items():
-            conn = self._connections.get(pid)
-            if conn is None or conn.closed:
-                continue
-            per_player = [
-                ev for ev in events
-                if ev.visibility == "public" or ev.private_to == pid
-            ]
-            if not per_player:
-                continue
-            tasks[pid] = asyncio.create_task(
-                self.ai.narrate_round(
-                    actor, round_num, per_player, scenario,
-                    world_summary=world_summary,
-                    others_summary=self._others_summary(pid),
-                    upcoming_threat=upcoming_threat,
-                    history=self._narration_history.get(pid),
-                )
-            )
-
-        if not tasks:
-            return
-
-        results = await asyncio.gather(*tasks.values(), return_exceptions=True)
-        for pid, result in zip(tasks.keys(), results, strict=True):
-            conn = self._connections.get(pid)
-            if conn is None or conn.closed:
-                continue
-            if isinstance(result, str) and result.strip():
-                self._narration_history.setdefault(pid, []).append(result)
-                await conn.send("narrative", {
-                    "round": round_num,
-                    "text": result,
-                })
-            else:
-                lines = [
-                    ev.narrative_seed for ev in events
-                    if ev.visibility == "private" and ev.private_to == pid
-                ]
-                if lines:
-                    await conn.send("narrative", {
-                        "round": round_num,
-                        "text": "\n".join(lines),
-                    })
-
-    def _others_summary(self, viewer_id: str) -> str | None:
-        """Fog-of-war-respecting summary of other players for one viewer.
-
-        Only reveals players in the *same location* (the one thing the viewer
-        can actually see). Players elsewhere are omitted so narration never
-        leaks a hidden position.
+        Three-axis score: base weight of event kind + character
+        criticality_triggers + location-point criticality. Hard triggers
+        (near-end round, a dying member) always narrate.
         """
         assert self.state is not None
         scenario = self.room.scenario
-        viewer_loc = self.state.actors[viewer_id].location_id
-        lines: list[str] = []
-        for pid, actor in self.state.actors.items():
-            if pid == viewer_id:
+
+        if self.state.round >= scenario.max_rounds - 3:
+            return True
+
+        members = [a for a in self.state.actors.values() if a.faction_id == faction_id]
+        if any(a.alive and a.stats.hp <= a.stats.max_hp * 0.3 for a in members):
+            return True
+
+        best = 0.0
+        for ev in events:
+            if not self._faction_sees_event(faction_id, ev):
                 continue
-            if actor.location_id != viewer_loc:
+            score = BASE_WEIGHT.get(ev.kind, 0.0)
+            if ev.kind == "danger_damage" and ev.payload.get("killed"):
+                score = max(score, BASE_WEIGHT["death"])
+            score += self._trigger_weight(faction_id, ev)
+            best = max(best, score)
+        return best >= CRITICAL_THRESHOLD
+
+    def _faction_sees_event(self, faction_id: str, ev: GameEvent) -> bool:
+        if ev.visibility == "public":
+            return True
+        target = ev.private_to
+        if target is None or self.state is None:
+            return False
+        actor = self.state.actors.get(target)
+        return actor is not None and actor.faction_id == faction_id
+
+    def _trigger_weight(self, faction_id: str, ev: GameEvent) -> float:
+        assert self.state is not None
+        scenario = self.room.scenario
+        total = 0.0
+        for actor in self.state.actors.values():
+            if actor.faction_id != faction_id:
                 continue
             char = next(
                 (c for c in scenario.characters if c.id == actor.character_id), None
             )
-            name = char.name if char else "?"
-            lines.append(f"{actor.player_name}({name}) 与你同处一地, 存活")
-        return "\n".join(lines) if lines else None
+            if char is None:
+                continue
+            for trig in char.criticality_triggers:
+                if self._trigger_matches(trig, ev):
+                    total += trig.weight
+        return total
 
-    def _upcoming_threat(self, round_num: int) -> str | None:
-        """Next scheduled random event, framed as a vague premonition (no
-        timeline, so the prose stays a hint rather than a confirmed fact)."""
+    def _trigger_matches(self, trig, ev: GameEvent) -> bool:
+        if trig.kind and trig.kind != ev.kind:
+            return False
+        if trig.item_id and trig.item_id != ev.payload.get("item_id"):
+            return False
+        if trig.location_id:
+            loc = (
+                ev.payload.get("location_id")
+                or ev.payload.get("location")
+                or ev.payload.get("to")
+            )
+            if ev.actor_ids and self.state is not None:
+                actor = self.state.actors.get(ev.actor_ids[0])
+                if actor is not None:
+                    loc = loc or actor.location_id
+            if loc != trig.location_id:
+                return False
+        return True
+
+    async def _narrate_factions(self, events: list[GameEvent]) -> None:
         assert self.state is not None
         scenario = self.room.scenario
-        upcoming = []
-        for ev in scenario.random_events:
-            if ev.round_trigger is None:
-                continue
-            if ev.round_trigger <= round_num:
-                continue
-            if self.state.fired_events.get(ev.id, 0) >= ev.max_fires:
-                continue
-            upcoming.append(ev)
-        if not upcoming:
-            return None
-        nxt = min(upcoming, key=lambda e: e.round_trigger)
-        return f"{nxt.name}——{nxt.description}"
+        round_num = self.state.round
+        t0 = time.monotonic()
 
-    async def _narrate_template(self, events: list[GameEvent]) -> None:
+        grouped: dict[str, list[str]] = {}
+        for pid, actor in self.state.actors.items():
+            if not actor.alive:
+                continue
+            conn = self._connections.get(pid)
+            if conn is None or conn.closed:
+                continue
+            grouped.setdefault(actor.faction_id, []).append(pid)
+
+        llm_factions: list[str] = []
+        template_pids: list[str] = []
+        for faction_id, pids in grouped.items():
+            if faction_id in scenario.factions and self._faction_critical(faction_id, events):
+                llm_factions.append(faction_id)
+            else:
+                template_pids.extend(pids)
+
+        kinds = sorted({ev.kind for ev in events})
+        log.info("round %d: faction narration start critical=%s kinds=%s", round_num, sorted(llm_factions), kinds)
+
+        tasks: dict[str, asyncio.Task] = {}
+        for faction_id in llm_factions:
+            faction = scenario.factions[faction_id]
+            faction_events = [
+                ev for ev in events if self._faction_sees_event(faction_id, ev)
+            ]
+            members = [self.state.actors[p] for p in grouped[faction_id]]
+            tasks[faction_id] = asyncio.create_task(
+                self.ai.narrate_faction(
+                    faction, members, round_num, faction_events, scenario,
+                    history=self._faction_history.get(faction_id),
+                )
+            )
+
+        if tasks:
+            results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+            t_done = time.monotonic()
+            log.info(
+                "round %d: faction narration done factions=%d total=%.2fs",
+                round_num, len(tasks), t_done - t0,
+            )
+            for faction_id, result in zip(tasks.keys(), results, strict=True):
+                if isinstance(result, str) and result.strip():
+                    self._faction_history.setdefault(faction_id, []).append(result)
+                    for pid in grouped[faction_id]:
+                        conn = self._connections.get(pid)
+                        if conn is not None and not conn.closed:
+                            await conn.send("narrative", {
+                                "round": round_num,
+                                "text": result,
+                            })
+                else:
+                    template_pids.extend(grouped[faction_id])
+
+        if template_pids:
+            await self._narrate_template(events, pids=template_pids)
+
+    async def _narrate_template(
+        self,
+        events: list[GameEvent],
+        pids: list[str] | None = None,
+    ) -> None:
+        if self.state is None:
+            return
+        round_num = self.state.round
+        t0 = time.monotonic()
+        if pids is None:
+            pids = [pid for pid, a in self.state.actors.items() if a.alive]
+        kinds = sorted({ev.kind for ev in events})
+        log.info("round %d: template narration players=%d kinds=%s", round_num, len(pids), kinds)
+
+        moved_to: dict[str, str] = {}
         for ev in events:
-            if ev.visibility == "private" and ev.private_to:
-                conn = self._connections.get(ev.private_to)
-                if conn and not conn.closed:
-                    await conn.send("narrative", {
-                        "round": self.state.round if self.state else 0,
-                        "text": ev.narrative_seed,
-                    })
+            if ev.kind == "move" and ev.actor_ids:
+                moved_to[ev.actor_ids[0]] = ev.payload.get("to", "")
+
+        for pid in pids:
+            conn = self._connections.get(pid)
+            if conn is None or conn.closed:
+                continue
+
+            parts: list[str] = []
+            flavor = self._location_flavor(moved_to.get(pid, ""))
+            if flavor:
+                parts.append(flavor)
+            for ev in events:
+                if ev.visibility == "private" and ev.private_to == pid:
+                    parts.append(ev.narrative_seed)
+
+            if parts:
+                await conn.send("narrative", {
+                    "round": round_num,
+                    "text": "\n".join(parts),
+                })
+
+        log.info("round %d: template narration done total=%.4fs", round_num, time.monotonic() - t0)
+
+    def _location_flavor(self, loc_id: str) -> str | None:
+        if not loc_id or self.ai is None:
+            return None
+        lib = getattr(self.ai, "library", None)
+        if lib is None:
+            return None
+        return lib.location_text(loc_id)
 
     async def _on_game_over(self, winner_ids: list[str]) -> None:
         winner_names = []
@@ -282,7 +392,10 @@ class RoomTask:
                     "id": char_def.id if char_def else "",
                     "name": char_def.name if char_def else "",
                     "backstory": char_def.backstory if char_def else "",
-                    "secret_objective": char_def.secret_objective if char_def else "",
+                    "secret_objective": (
+                        char_def.personal_objective.description
+                        if char_def and char_def.personal_objective else ""
+                    ),
                 },
             })
 

@@ -48,7 +48,7 @@ def _droppable(scenario) -> dict[str, list[str]]:
 class TestCityOfAsh:
     def test_loads(self, scenario):
         assert scenario.id == "city_of_ash"
-        assert scenario.player_range == (2, 4)
+        assert scenario.player_range == (2, 10)
         assert scenario.max_rounds == 26
 
     def test_structure_counts(self, scenario):
@@ -56,7 +56,7 @@ class TestCityOfAsh:
         assert len(scenario.items) == 26
         assert len(scenario.recipes) == 6
         assert len(scenario.knowledge_sources) == 4
-        assert len(scenario.characters) == 4
+        assert len(scenario.characters) == 5
         assert len(scenario.random_events) == 7
 
     def test_map_fully_connected(self, scenario):
@@ -67,7 +67,7 @@ class TestCityOfAsh:
             )
 
     def test_distinct_victory_kinds(self, scenario):
-        kinds = {c.id: c.victory_condition.kind for c in scenario.characters}
+        kinds = {c.id: c.personal_objective.trigger.kind for c in scenario.characters if c.personal_objective}
         assert kinds["soldier"] == "eliminate_all"
         assert kinds["cultist"] == "custom_flag"
         assert kinds["thief"] == "escape"

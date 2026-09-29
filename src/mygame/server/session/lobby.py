@@ -19,7 +19,7 @@ from mygame.shared.models import ScenarioDef
 log = logging.getLogger(__name__)
 
 ROOM_CODE_LEN = 6
-MAX_PLAYERS_PER_ROOM = 4
+MAX_PLAYERS_PER_ROOM = 10
 
 
 @dataclass
@@ -68,7 +68,9 @@ class Room:
         return all(s.character_id for s in self._slots.values())
 
     def can_join(self) -> bool:
-        return self.player_count < MAX_PLAYERS_PER_ROOM
+        return self.player_count < min(
+            MAX_PLAYERS_PER_ROOM, self.scenario.player_range[1]
+        )
 
     def add_player(self, player_id: str, name: str, conn: Connection) -> bool:
         if not self.can_join():

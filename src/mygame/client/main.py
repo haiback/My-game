@@ -29,6 +29,7 @@ from mygame.client.ui.layout import (
     render_header,
     render_inventory,
     render_lobby,
+    render_map,
     render_narrative,
     render_stats,
 )
@@ -57,6 +58,10 @@ class GameClient:
         self.effects: list = []
         self.actors: list[dict] = []
         self.actions: list[dict] = []
+        self.location_id: str = ""
+        self.map_data: list[dict] = []
+        self.traveling: bool = False
+        self.travel_to: str | None = None
         self.log_lines: list[str] = []
         self.narrative_lines: list[str] = []
         self.input_message: str = ""
@@ -308,11 +313,25 @@ class GameClient:
         self.effects = view.get("status_effects", [])
         self.actors = view.get("visible_actors", [])
         self.actions = view.get("legal_actions", [])
+        self.location_id = view.get("location_id", "")
+        self.map_data = view.get("map", [])
+        self.traveling = view.get("travel_remaining", 0) > 0
+        self.travel_to = view.get("travel_to")
 
         console.print(f"\n[bold cyan]--- Round {self.round_num} ---[/bold cyan]")
         console.print(f"[bold]Location:[/bold] {self.location}")
         console.print(f"[bold]HP:[/bold] {self.stats.get('hp', '?')}/{self.stats.get('max_hp', '?')}  "
                        f"[bold]Stamina:[/bold] {self.stats.get('stamina', '?')}/{self.stats.get('max_stamina', '?')}")
+
+        if self.traveling:
+            console.print(f"[bold cyan]在途中，还剩 {view.get('travel_remaining')} 回合到达。[/bold cyan]")
+
+        if self.map_data:
+            console.print("[bold]Map:[/bold]")
+            console.print(render_map(
+                self.map_data, self.location_id, self.traveling,
+                self.travel_to, self.actors,
+            ))
 
         if self.actors:
             console.print("[bold]Others here:[/bold]")

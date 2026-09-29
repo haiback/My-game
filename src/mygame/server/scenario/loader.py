@@ -84,11 +84,30 @@ def _validate_references(scenario: ScenarioDef, source: Path) -> None:
                 errors.append(
                     f"Location '{loc.id}' connects to unknown location '{conn_target}'"
                 )
+        for direction, cost in loc.travel_costs.items():
+            if direction not in loc.connections:
+                errors.append(
+                    f"Location '{loc.id}' has travel_cost for unknown direction '{direction}'"
+                )
+            elif cost < 1:
+                errors.append(
+                    f"Location '{loc.id}' travel_cost for '{direction}' must be >= 1"
+                )
+        if loc.coord is not None and (not isinstance(loc.coord, list) or len(loc.coord) != 2):
+            errors.append(
+                f"Location '{loc.id}' coord must be a [x, y] pair"
+            )
         for drop in loc.searchable_items:
             if drop.item_id not in item_ids:
                 errors.append(
                     f"Location '{loc.id}' drops unknown item '{drop.item_id}'"
                 )
+        for point in loc.points:
+            _validate_effects(
+                scenario, errors,
+                context=f"Location '{loc.id}' point '{point.id}'",
+                effects=point.effects,
+            )
 
     for recipe in scenario.recipes:
         if recipe.output_item_id not in item_ids:
@@ -111,11 +130,49 @@ def _validate_references(scenario: ScenarioDef, source: Path) -> None:
                 errors.append(
                     f"Character '{char.id}' starts with unknown item '{inv_id}'"
                 )
+        if char.faction_id and char.faction_id not in scenario.factions:
+            errors.append(
+                f"Character '{char.id}' references unknown faction '{char.faction_id}'"
+            )
+        if char.personal_objective is not None:
+            _validate_effects(
+                scenario, errors,
+                context=f"Character '{char.id}' personal objective",
+                effects=char.personal_objective.effects,
+            )
+        for trig in char.criticality_triggers:
+            if trig.item_id and trig.item_id not in item_ids:
+                errors.append(
+                    f"Character '{char.id}' criticality_trigger references unknown item '{trig.item_id}'"
+                )
+            if trig.location_id and trig.location_id not in scenario.locations:
+                errors.append(
+                    f"Character '{char.id}' criticality_trigger references unknown location '{trig.location_id}'"
+                )
         for ability in char.abilities:
             _validate_effects(
                 scenario, errors,
                 context=f"Character '{char.id}' ability '{ability.id}'",
                 effects=ability.effects,
+            )
+            for variant in ability.variants:
+                _validate_effects(
+                    scenario, errors,
+                    context=f"Character '{char.id}' ability '{ability.id}' variant '{variant.name or '?'}'",
+                    effects=variant.effects,
+                )
+                _validate_condition(
+                    errors,
+                    context=f"Character '{char.id}' ability '{ability.id}' variant '{variant.name or '?'}'",
+                    condition=variant.condition,
+                )
+
+    for fid, faction in scenario.factions.items():
+        if faction.objective is not None:
+            _validate_effects(
+                scenario, errors,
+                context=f"Faction '{fid}' objective",
+                effects=faction.objective.effects,
             )
 
     knowledge_ids = {k.id for k in scenario.knowledge_sources}
@@ -177,3 +234,31 @@ def _validate_effects(
                 errors.append(
                     f"{context} references unknown stat '{stat}'"
                 )
+
+
+_KNOWN_CONDITION_KEYS = {
+    "all_of", "any_of",
+    "self_hp_below", "self_hp_above", "self_hp_pct_below", "self_stamina_below",
+    "self_has_status", "self_has_knowledge", "self_has_item",
+    "target_hp_pct_below", "target_has_status",
+    "at_location", "at_location_tag", "global_flag",
+}
+
+
+def _validate_condition(
+    errors: list[str],
+    context: str,
+    condition: dict,
+) -> None:
+    """Reject unknown condition predicates so scenario typos fail fast.
+
+    Unknown predicates are permissive at runtime, so a misspelled key would
+    silently never match — catching it here turns that into a load error.
+    """
+    for key, value in condition.items():
+        if key in ("all_of", "any_of"):
+            for sub in value:
+                _validate_condition(errors, context, sub)
+            continue
+        if key not in _KNOWN_CONDITION_KEYS:
+            errors.append(f"{context} uses unknown condition key '{key}'")
